@@ -28,6 +28,7 @@
 
     # https://devenv.sh/processes/
     # processes.cargo-watch.exec = "cargo-watch";
+    processes.python-api.exec = "fastapi dev python-api/app.py";
 
     # https://devenv.sh/services/
     # services.postgres.enable = true;
