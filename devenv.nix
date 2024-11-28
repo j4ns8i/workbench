@@ -8,7 +8,7 @@
     # https://devenv.sh/packages/
     packages = with pkgs; [
       git
-      podman
+      podman # still requires a podman service to be configured externally
     ];
 
     languages.python = {

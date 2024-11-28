@@ -1,21 +1,118 @@
-# Build a virtualenv using the appropriate Debian release
-# * Install python3-venv for the built-in Python3 venv module (not installed by default)
-# * Install gcc libpython3-dev to compile C Python modules
-# * In the virtualenv: Update pip setuputils and wheel to support building new packages
-FROM debian:12-slim AS build
-RUN apt-get update && \
-    apt-get install --no-install-suggests --no-install-recommends --yes python3-venv gcc libpython3-dev && \
-    python3 -m venv /venv && \
-    /venv/bin/pip install --upgrade pip setuptools wheel
+# syntax=docker/dockerfile:1.9
+FROM ubuntu:noble AS build
 
-# Build the virtualenv as a separate step: Only re-execute this step when requirements.txt changes
-FROM build AS build-venv
-COPY requirements.txt /requirements.txt
-RUN /venv/bin/pip install --disable-pip-version-check -r /requirements.txt
+# Adapted from https://hynek.me/articles/docker-uv/
 
-# Copy the virtualenv into a distroless image
-FROM gcr.io/distroless/python3-debian12
-COPY --from=build-venv /venv /venv
-COPY . /app
+# The following does not work in Podman unless you build in Docker
+# compatibility mode: <https://github.com/containers/podman/issues/8477>
+# You can manually prepend every RUN script with `set -ex` too.
+# SHELL ["sh", "-exc"]
+
+### Start build prep.
+### This should be a separate build container for better reuse.
+
+RUN <<EOT
+apt-get update -qy
+apt-get install -qyy \
+    -o APT::Install-Recommends=false \
+    -o APT::Install-Suggests=false \
+    build-essential \
+    ca-certificates \
+    python3-setuptools \
+    python3.12-dev
+EOT
+
+# Security-conscious organizations should package/review uv themselves.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# - Silence uv complaining about not being able to use hard links,
+# - tell uv to byte-compile packages for faster application startups,
+# - prevent uv from accidentally downloading isolated Python builds,
+# - pick a Python (use `/usr/bin/python3.12` on uv 0.5.0 and later),
+# - and finally declare `/app` as the target for `uv sync`.
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON=python3.12 \
+    UV_PROJECT_ENVIRONMENT=/app
+
+### End build prep -- this is where your app Dockerfile should start.
+
+FROM build AS app
+
+# Since there's no point in shipping lock files, we move them
+# into a directory that is NOT copied into the runtime image.
+# The trailing slash makes COPY create `/_lock/` automagically.
+COPY pyproject.toml /_lock/
+COPY uv.lock /_lock/
+
+# Synchronize DEPENDENCIES without the application itself.
+# This layer is cached until uv.lock or pyproject.toml change.
+# You can create `/app` using `uv venv` in a separate `RUN`
+# step to have it cached, but with uv it's so fast, it's not worth
+# it, so we let `uv sync` create it for us automagically.
+RUN --mount=type=cache,target=/root/.cache <<EOT
+cd /_lock
+uv sync \
+    --locked \
+    --no-dev \
+    --no-install-project
+EOT
+
+# Now install the APPLICATION from `/src` without any dependencies.
+# `/src` will NOT be copied into the runtime container.
+# LEAVE THIS OUT if your application is NOT a proper Python package.
+# As of uv 0.4.11, you can also use
+# `cd /src && uv sync --locked --no-dev --no-editable` instead.
+COPY . /src
+RUN --mount=type=cache,target=/root/.cache \
+    uv pip install \
+        --python=$UV_PROJECT_ENVIRONMENT \
+        --no-deps \
+        /src
+
+
+##########################################################################
+
+FROM ubuntu:noble
+
+# Optional: add the application virtualenv to search path.
+ENV PATH=/app/bin:$PATH
+
+# Don't run your app as root.
+RUN <<EOT
+groupadd -r app
+useradd -r -d /app -g app -N app
+EOT
+
+ENTRYPOINT ["fastapi", "run", "src/app.py"]
+# See <https://hynek.me/articles/docker-signals/>.
+STOPSIGNAL SIGINT
+
+# Note how the runtime dependencies differ from build-time ones.
+# Notably, there is no uv either!
+RUN <<EOT
+apt-get update -qy
+apt-get install -qyy \
+    -o APT::Install-Recommends=false \
+    -o APT::Install-Suggests=false \
+    python3.12 \
+    libpython3.12 \
+    libpcre3 \
+    libxml2
+
+apt-get clean
+rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+EOT
+
+# Copy the pre-built `/app` directory to the runtime container
+# and change the ownership to user app and group app in one step.
+COPY --from=app --chown=app:app /app /app
+
+# If your application is NOT a proper Python package that got
+# pip-installed above, you need to copy your application into
+# the container HERE:
+COPY ./python-api/src /app/src/
+
+USER app
 WORKDIR /app
-ENTRYPOINT ["/venv/bin/python3", "main.py"]
