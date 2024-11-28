@@ -7,12 +7,13 @@
       supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       pkgs = forAllSystems (system: nixpkgs.legacyPackages.${system});
+      pythonApiPath = "${self}/python-api";
     in
     {
       packages = forAllSystems (system: let
         inherit (poetry2nix.lib.mkPoetry2Nix { pkgs = pkgs.${system}; }) mkPoetryApplication;
       in {
-        default = mkPoetryApplication { projectDir = self; };
+        default = mkPoetryApplication { projectDir = pythonApiPath; };
       });
 
       devShells = forAllSystems (system: let
@@ -20,7 +21,7 @@
       in {
         default = pkgs.${system}.mkShellNoCC {
           packages = with pkgs.${system}; [
-            (mkPoetryEnv { projectDir = self; })
+            (mkPoetryEnv { projectDir = pythonApiPath; })
             poetry
           ];
         };
