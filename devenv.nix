@@ -9,6 +9,10 @@
     packages = with pkgs; [
       git
       podman # still requires a podman service to be configured externally
+      tilt
+      kubectl
+      kind
+      kubernetes-helm
     ];
 
     languages.python = {
