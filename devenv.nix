@@ -8,6 +8,7 @@
       podman # still requires a podman service to be configured externally
       tilt
       kubectl
+      kubectx
       kind
       kubernetes-helm
     ];
@@ -25,6 +26,19 @@
     };
 
     processes.python-api.exec = "fastapi dev python-api/app.py";
+
+    tasks = {
+      "helm:render" = {
+        exec = "helm template tilt deploy/tilt > deploy/tilt/out/tilt.yaml";
+      };
+      "kind:up" = {
+        exec = "systemd-run --scope --user -p \"Delegate=yes\" kind create cluster --name workbench";
+        status = "kind get clusters 2>/dev/null | grep -q '^workbench$'";
+      };
+      "kind:down" = {
+        exec = "kind delete cluster --name workbench";
+      };
+    };
 
     # See full reference at https://devenv.sh/reference/options/
   }

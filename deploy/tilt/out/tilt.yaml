@@ -1,0 +1,98 @@
+---
+# Source: tilt/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tilt
+  labels:
+    helm.sh/chart: tilt-0.1.0
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+automountServiceAccountToken: true
+---
+# Source: tilt/templates/api/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tilt
+  labels:
+    helm.sh/chart: tilt-0.1.0
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tilt
+    app.kubernetes.io/instance: tilt
+    workbench.j4ns8i.github.com/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    workbench.j4ns8i.github.com/component: api
+---
+# Source: tilt/templates/api/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tilt
+  labels:
+    helm.sh/chart: tilt-0.1.0
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tilt
+    app.kubernetes.io/instance: tilt
+    workbench.j4ns8i.github.com/component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      workbench.j4ns8i.github.com/component: api
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: tilt-0.1.0
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: tilt
+        app.kubernetes.io/instance: tilt
+        workbench.j4ns8i.github.com/component: api
+    spec:
+      serviceAccountName: tilt
+      containers:
+        - name: "api"
+          image: "api:latest"
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources: {}
+---
+# Source: tilt/templates/tests/test-api-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "tilt-test-api-connection"
+  labels:
+    helm.sh/chart: tilt-0.1.0
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['tilt:80']
+  restartPolicy: Never
