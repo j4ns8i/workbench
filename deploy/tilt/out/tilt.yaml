@@ -1,26 +1,26 @@
 ---
-# Source: tilt/templates/serviceaccount.yaml
+# Source: workbench/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: tilt
+  name: workbench
   labels:
-    helm.sh/chart: tilt-0.1.0
+    helm.sh/chart: workbench-0.1.0
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: true
 ---
-# Source: tilt/templates/api/service.yaml
+# Source: workbench/templates/api/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: tilt
+  name: workbench
   labels:
-    helm.sh/chart: tilt-0.1.0
+    helm.sh/chart: workbench-0.1.0
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: tilt
-    app.kubernetes.io/instance: tilt
+    app.kubernetes.io/name: workbench
+    app.kubernetes.io/instance: workbench
     workbench.j4ns8i.github.com/component: api
 spec:
   type: ClusterIP
@@ -32,17 +32,17 @@ spec:
   selector:
     workbench.j4ns8i.github.com/component: api
 ---
-# Source: tilt/templates/api/deployment.yaml
+# Source: workbench/templates/api/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tilt
+  name: workbench
   labels:
-    helm.sh/chart: tilt-0.1.0
+    helm.sh/chart: workbench-0.1.0
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: tilt
-    app.kubernetes.io/instance: tilt
+    app.kubernetes.io/name: workbench
+    app.kubernetes.io/instance: workbench
     workbench.j4ns8i.github.com/component: api
 spec:
   replicas: 1
@@ -52,17 +52,17 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: tilt-0.1.0
+        helm.sh/chart: workbench-0.1.0
         app.kubernetes.io/version: "0.1.0"
         app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/name: tilt
-        app.kubernetes.io/instance: tilt
+        app.kubernetes.io/name: workbench
+        app.kubernetes.io/instance: workbench
         workbench.j4ns8i.github.com/component: api
     spec:
-      serviceAccountName: tilt
+      serviceAccountName: workbench
       containers:
         - name: "api"
-          image: "api:latest"
+          image: "workbench/api:latest"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -78,13 +78,13 @@ spec:
               port: http
           resources: {}
 ---
-# Source: tilt/templates/tests/test-api-connection.yaml
+# Source: workbench/templates/tests/test-api-connection.yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "tilt-test-api-connection"
+  name: "workbench-test-api-connection"
   labels:
-    helm.sh/chart: tilt-0.1.0
+    helm.sh/chart: workbench-0.1.0
     app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
@@ -94,5 +94,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['tilt:80']
+      args: ['workbench:80']
   restartPolicy: Never

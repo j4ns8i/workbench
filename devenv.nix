@@ -25,11 +25,14 @@
       };
     };
 
-    processes.python-api.exec = "fastapi dev python-api/app.py";
+    processes.api.exec = "fastapi dev api/app.py";
 
     tasks = {
-      "helm:render" = {
-        exec = "helm template tilt deploy/tilt > deploy/tilt/out/tilt.yaml";
+      "build:api" = {
+        exec = "podman build . -f api/build/Dockerfile -t workbench/api";
+      };
+      "helm:render:local" = {
+        exec = "helm template workbench deploy/tilt > deploy/tilt/out/tilt.yaml";
       };
       "kind:up" = {
         exec = "systemd-run --scope --user -p \"Delegate=yes\" kind create cluster --name workbench";
