@@ -14,10 +14,10 @@ COPY uv.lock /build/uv.lock
 RUN cd /build && uv sync --locked --no-dev --no-install-project
 
 # Copy the virtualenv into a distroless image
-FROM gcr.io/distroless/python3-debian12
+FROM gcr.io/distroless/python3-debian12:debug
 ENV PATH=/app/bin:$PATH
 COPY --from=build-app --chown=nonroot:nonroot /app /app
-COPY --chown=nonroot:nonroot api/src /app/src
+COPY --chown=nonroot:nonroot src /app/src
 USER nonroot
 WORKDIR /app
 STOPSIGNAL SIGINT

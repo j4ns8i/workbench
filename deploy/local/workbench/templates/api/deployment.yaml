@@ -3,7 +3,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: local-workbench
+  name: local-workbench-api
   labels:
     helm.sh/chart: workbench-0.1.0
     app.kubernetes.io/version: "0.1.0"

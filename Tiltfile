@@ -1,16 +1,16 @@
 ### Build steps
 
-load('ext://podman', 'podman_build_with_restart')
+load('ext://restart_process', 'docker_build_with_restart')
 
 def build_api():
-    podman_build_with_restart(
+    docker_build_with_restart(
         'workbench/api',
-        '.',
-        'fastapi dev api/app.py',
-        extra_flags=['-f', 'api/build/Dockerfile'],
+        './api',
+        'fastapi run src/app.py',
+        dockerfile='api/build/Dockerfile',
         live_update=[
             sync('./api/src', '/app/src'),
-        ]
+        ],
     )
 
 build_api()
@@ -28,6 +28,7 @@ def apply_api():
     api_templates = ['api/service.yaml', 'api/deployment.yaml']
     for p in api_templates:
         k8s_yaml(os.path.join(deploy_dir, p))
+    k8s_resource(workload='local-workbench-api', port_forwards=[8000])
 
 apply_common()
 apply_api()

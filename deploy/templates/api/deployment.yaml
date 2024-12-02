@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "workbench.fullname" . }}
+  name: {{ include "workbench.apiName" . }}
   labels:
     {{- include "workbench.apiLabels" . | nindent 4 }}
 spec:

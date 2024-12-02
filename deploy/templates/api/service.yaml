@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "workbench.fullname" . }}
+  name: {{ include "workbench.apiName" . }}
   labels:
     {{- include "workbench.apiLabels" . | nindent 4 }}
 spec:
