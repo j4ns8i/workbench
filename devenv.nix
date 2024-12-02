@@ -32,7 +32,7 @@
         exec = "podman build . -f api/build/Dockerfile -t workbench/api";
       };
       "helm:render:local" = {
-        exec = "helm template workbench deploy/tilt > deploy/tilt/out/tilt.yaml";
+        exec = "helm template local deploy/ --release-name --output-dir=deploy/";
       };
       "kind:up" = {
         exec = "systemd-run --scope --user -p \"Delegate=yes\" kind create cluster --name workbench";
