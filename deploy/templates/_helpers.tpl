@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "tilt.name" -}}
+{{- define "workbench.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "tilt.fullname" -}}
+{{- define "workbench.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -23,18 +23,22 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
+{{- define "workbench.apiName" -}}
+{{ include "workbench.fullname" . }}-api
+{{- end }}
+
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "tilt.chart" -}}
+{{- define "workbench.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "tilt.commonLabels" -}}
-helm.sh/chart: {{ include "tilt.chart" . }}
+{{- define "workbench.commonLabels" -}}
+helm.sh/chart: {{ include "workbench.chart" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -44,33 +48,33 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Common selector labels
 */}}
-{{- define "tilt.commonSelectorLabels" -}}
-app.kubernetes.io/name: {{ include "tilt.name" . }}
+{{- define "workbench.commonSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "workbench.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 API labels
 */}}
-{{- define "tilt.apiLabels" -}}
-{{ include "tilt.commonLabels" . }}
-{{ include "tilt.commonSelectorLabels" . }}
-{{ include "tilt.apiSelectorLabels" . }}
+{{- define "workbench.apiLabels" -}}
+{{ include "workbench.commonLabels" . }}
+{{ include "workbench.commonSelectorLabels" . }}
+{{ include "workbench.apiSelectorLabels" . }}
 {{- end }}
 
 {{/*
 API Selector labels
 */}}
-{{- define "tilt.apiSelectorLabels" -}}
+{{- define "workbench.apiSelectorLabels" -}}
 workbench.j4ns8i.github.com/component: api
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "tilt.serviceAccountName" -}}
+{{- define "workbench.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "tilt.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "workbench.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "tilt.fullname" . }}
+  name: {{ include "workbench.apiName" . }}
   labels:
-    {{- include "tilt.apiLabels" . | nindent 4 }}
+    {{- include "workbench.apiLabels" . | nindent 4 }}
 spec:
   type: {{ .Values.api.service.type }}
   ports:
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "tilt.apiSelectorLabels" . | nindent 4 }}
+    {{- include "workbench.apiSelectorLabels" . | nindent 4 }}

@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tilt.fullname" . }}
+  name: {{ include "workbench.apiName" . }}
   labels:
-    {{- include "tilt.apiLabels" . | nindent 4 }}
+    {{- include "workbench.apiLabels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.api.replicaCount }}
   selector:
     matchLabels:
-      {{- include "tilt.apiSelectorLabels" . | nindent 6 }}
+      {{- include "workbench.apiSelectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "tilt.apiLabels" . | nindent 8 }}
+        {{- include "workbench.apiLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "tilt.serviceAccountName" . }}
+      serviceAccountName: {{ include "workbench.serviceAccountName" . }}
       containers:
         - name: "api"
-          image: "api:latest"
+          image: "workbench/api:latest"
           imagePullPolicy: Always
           ports:
             - name: http

@@ -5,11 +5,11 @@
     # https://devenv.sh/packages/
     packages = with pkgs; [
       git
-      podman # still requires a podman service to be configured externally
+      docker # still requires a docker daemon to be configured externally
       tilt
       kubectl
       kubectx
-      kind
+      k3d
       kubernetes-helm
     ];
 
@@ -25,18 +25,21 @@
       };
     };
 
-    processes.python-api.exec = "fastapi dev python-api/app.py";
+    processes.api.exec = "fastapi dev api/app.py";
 
     tasks = {
-      "helm:render" = {
-        exec = "helm template tilt deploy/tilt > deploy/tilt/out/tilt.yaml";
+      "build:api" = {
+        exec = "docker build ./api -f api/build/Dockerfile -t workbench/api";
       };
-      "kind:up" = {
-        exec = "systemd-run --scope --user -p \"Delegate=yes\" kind create cluster --name workbench";
-        status = "kind get clusters 2>/dev/null | grep -q '^workbench$'";
+      "helm:render:local" = {
+        exec = "helm template local deploy/ --release-name --output-dir=deploy/";
       };
-      "kind:down" = {
-        exec = "kind delete cluster --name workbench";
+      "k3d:up" = {
+        exec = "k3d cluster create workbench --registry-create workbench-registry";
+        status = "k3d cluster get workbench &>/dev/null";
+      };
+      "k3d:down" = {
+        exec = "k3d cluster delete workbench";
       };
     };
 

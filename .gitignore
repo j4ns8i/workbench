@@ -188,4 +188,4 @@ devenv.local.nix
 
 ### Custom overrides ###
 
-!python-api/build/
+!api/build/

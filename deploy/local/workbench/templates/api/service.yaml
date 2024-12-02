@@ -1,0 +1,22 @@
+---
+# Source: workbench/templates/api/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: local-workbench-api
+  labels:
+    helm.sh/chart: workbench-0.1.0
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: workbench
+    app.kubernetes.io/instance: local
+    workbench.j4ns8i.github.com/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    workbench.j4ns8i.github.com/component: api
