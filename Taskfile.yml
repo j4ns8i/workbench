@@ -21,4 +21,4 @@ tasks:
   build-helm:
     desc: "Render the helm chart templates"
     cmds:
-      - helm template local deploy/ --release-name --output-dir=deploy/
+      - helm template local deploy/ --release-name --output-dir=deploy/rendered/
