@@ -20,5 +20,6 @@ build_api()
 def apply_helm_chart():
     chart = helm('deploy', name='workbench')
     k8s_yaml(chart)
+    k8s_resource(workload='workbench-api', port_forwards=[8000])
 
 apply_helm_chart()
