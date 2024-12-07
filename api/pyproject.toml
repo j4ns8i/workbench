@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]>=0.115.5",
+    "loguru>=0.7.3",
+    "pytest>=8.3.4",
+    "pytest-mock>=3.14.0",
+    "redis>=5.2.1",
 ]
 
 [dependency-groups]

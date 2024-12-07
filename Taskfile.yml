@@ -22,3 +22,7 @@ tasks:
     desc: "Render the helm chart templates"
     cmds:
       - helm template local deploy/ --release-name --output-dir=deploy/rendered/
+  test-api:
+    desc: "Run the api tests"
+    cmds:
+      - pytest
