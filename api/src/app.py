@@ -3,8 +3,10 @@ import fastapi
 from loguru import logger
 import redis.asyncio as _redis
 
+from . import config
+
 app = FastAPI()
-pool = _redis.ConnectionPool(host="workbench-redis-master", port=6379, protocol=3)
+pool = _redis.ConnectionPool(host=config.redis_host, port=config.redis_port, protocol=3)
 redis = _redis.Redis(connection_pool=pool)
 
 

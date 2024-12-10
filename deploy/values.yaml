@@ -39,10 +39,3 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-
-redis:
-  auth:
-    enabled: false
-  architecture: standalone
-  tls:
-    authClients: false

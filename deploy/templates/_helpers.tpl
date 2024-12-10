@@ -79,3 +79,17 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Redis host
+*/}}
+{{- define "workbench.redisHost" -}}
+{{- default "redis-master" .Values.redisHost }}
+{{- end }}
+
+{{/*
+Redis host
+*/}}
+{{- define "workbench.redisPort" -}}
+{{- default 6379 .Values.redisPort }}
+{{- end }}
