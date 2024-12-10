@@ -8,12 +8,15 @@
       git
       docker # still requires a docker daemon to be configured externally
       tilt
+      go-task
+      kubernetes-helm
+    ] ++ (with pkgs-unstable; [
       kubectl
       kubectx
+      stern
       k3d
-      kubernetes-helm
-      go-task
-    ];
+      redis
+    ]);
 
     languages.python = {
       enable = true;

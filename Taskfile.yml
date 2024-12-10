@@ -5,7 +5,7 @@ tasks:
     desc: "Create a 'workbench' k3d cluster"
     cmds:
       - k3d cluster delete workbench
-      - k3d cluster create workbench --registry-create workbench-registry
+      - k3d cluster create workbench --registry-create workbench-registry --config .k3d.yaml
     status:
       - k3d cluster get workbench
       - "k3d cluster get workbench -oyaml | grep 'Running: true'"
