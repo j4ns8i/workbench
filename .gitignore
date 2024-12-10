@@ -189,3 +189,6 @@ devenv.local.nix
 ### Custom overrides ###
 
 !api/build/
+
+# Taskfile dependency cache
+.task/
