@@ -1,5 +1,6 @@
 version: '3'
 tasks:
+
   up-k3d:
     desc: "Create a 'workbench' k3d cluster"
     cmds:
@@ -8,20 +9,34 @@ tasks:
     status:
       - k3d cluster get workbench
       - "k3d cluster get workbench -oyaml | grep 'Running: true'"
+
   down-k3d:
     desc: "Delete the 'workbench' k3d cluster"
     cmds:
       - k3d cluster delete workbench
+
   up-tilt:
     desc: "Run the tilt dev server"
     deps:
       - up-k3d
     cmds:
       - tilt up
+
+  up-dev:
+    desc: "Set up the development environment"
+    deps:
+      - up-tilt
+
+  down-dev:
+    desc: "Tear down the development environment"
+    deps:
+      - down-k3d
+
   build-helm:
     desc: "Render the helm chart templates"
     cmds:
       - helm template local deploy/ --release-name --output-dir=deploy/rendered/
+
   test-api:
     desc: "Run the api tests"
     cmds:
