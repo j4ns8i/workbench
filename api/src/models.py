@@ -6,7 +6,15 @@ from pydantic import BaseModel, Field, field_serializer
 class EventEnvelope(BaseModel):
     version: str
     kind: str
-    data: Any
+    data: str
+
+    @classmethod
+    def from_redis(cls, env: dict[bytes, bytes]) -> "EventEnvelope":
+        return cls(
+            version=env[b"version"].decode(),
+            kind=env[b"kind"].decode(),
+            data=env[b"data"].decode(),
+        )
 
 
 class NewMessageRequest(BaseModel):
