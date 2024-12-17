@@ -57,6 +57,9 @@ async def read_stream_event(
         resp = await redis.xread({key: from_id}, block=0)
 
         (id, data) = resp[events_key.encode()][0][0]
+        id = id.decode()
+        from_id = id
+
         envelope = EventEnvelope.from_redis(data)
 
         if kind is not None and envelope.kind != kind:
@@ -67,7 +70,7 @@ async def read_stream_event(
         message = MessageEventData.model_validate_json(envelope.data)
         if topic is not None and message.topic != topic:
             continue
-        return StreamEvent(id=id.decode(), data=envelope.model_dump_json())
+        return StreamEvent(id=id, data=envelope.model_dump_json())
 
 
 async def stream_redis_events(
