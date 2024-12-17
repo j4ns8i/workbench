@@ -30,3 +30,8 @@ class MessageEventData(BaseModel):
     @field_serializer("timestamp")
     def serialize_timestamp(self, timestamp: datetime) -> str:
         return timestamp.isoformat()
+
+
+class StreamEvent(BaseModel):
+    id: str
+    data: str
