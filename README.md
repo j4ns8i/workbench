@@ -14,6 +14,19 @@ This is implemented using [Redis Streams] and [server-sent events].
 [Redis Streams]: https://redis.io/docs/latest/develop/data-types/streams/
 [server-sent events]: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events
 
+Example of subscribing to a topic "asdf" and filtering where "kind" ==
+"message":
+
+```bash
+$ curl -v "http://localhost:8000/api/v0/events?kind=message&topic=asdf"
+```
+
+Example of publishing a "message" to the topic "asdf":
+
+```bash
+$ curl -H 'content-type: application/json' -XPOST http://localhost:8000/api/v0/messages -d '{"topic": "asdf", "message": "hello world"}'
+```
+
 ## Development
 
 This repo uses [devenv] ([nix]) to manage dependencies. [Task] is used in place
