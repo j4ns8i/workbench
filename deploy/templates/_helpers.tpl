@@ -93,3 +93,17 @@ Redis host
 {{- define "workbench.redisPort" -}}
 {{- default 6379 .Values.redisPort }}
 {{- end }}
+
+{{/*
+Redis password Secret name
+*/}}
+{{- define "workbench.redisSecretName" -}}
+{{- default "redis" .Values.redisPasswordName }}
+{{- end }}
+
+{{/*
+Redis password Secret key
+*/}}
+{{- define "workbench.redisSecretPasswordKey" -}}
+{{- default "redis-password" .Values.redisPasswordKey }}
+{{- end }}

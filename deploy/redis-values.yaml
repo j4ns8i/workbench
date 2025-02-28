@@ -1,5 +1,4 @@
-auth:
-  enabled: false
 architecture: standalone
+
 tls:
   authClients: false

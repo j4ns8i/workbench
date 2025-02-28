@@ -17,7 +17,7 @@ from .models import (
 from .store import events_key
 
 app = FastAPI()
-pool = ConnectionPool(host=config.redis_host, port=config.redis_port, protocol=3)
+pool = ConnectionPool(host=config.redis_host, port=config.redis_port, password=config.redis_password, protocol=3)
 redis = Redis(connection_pool=pool)
 
 
