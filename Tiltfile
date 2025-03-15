@@ -5,9 +5,9 @@ load('ext://restart_process', 'docker_build_with_restart')
 
 def build_api():
     docker_build_with_restart(
-        'workbench/api',
-        './api',
-        'fastapi run src/app.py',
+        ref='workbench/api',
+        context='./api',
+        entrypoint='fastapi run src/app.py',
         dockerfile='api/build/Dockerfile',
         live_update=[
             sync('./api/src', '/app/src'),
@@ -31,7 +31,10 @@ def apply_redis_chart():
     helm_repo('bitnami', 'https://charts.bitnami.com/bitnami')
     helm_resource('redis', 'bitnami/redis',
         namespace='default',
-        flags=['--values=./deploy/redis-values.yaml'],
+        flags=[
+            '--values=./deploy/redis-values.yaml',
+            '--version=20.10.1',
+        ],
         resource_deps=['bitnami'],
         deps=['./deploy/redis-values.yaml'],
     )

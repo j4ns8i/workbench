@@ -37,6 +37,14 @@ tasks:
     cmds:
       - helm template local deploy/ --release-name --output-dir=deploy/rendered/
 
+  run-redis-cli:
+    desc: "Connect to the local dev cluster with redis-cli"
+    cmds:
+      - redis-cli
+    env:
+      REDISCLI_AUTH:
+        sh: kubectl get secret --namespace default redis -o jsonpath="{.data.redis-password}" | base64 -d
+
   test-api:
     desc: "Run the api tests"
     cmds:
