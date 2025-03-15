@@ -27,6 +27,10 @@ If release name contains chart name it will be used as a full name.
 {{ include "workbench.fullname" . }}-api
 {{- end }}
 
+{{- define "workbench.productStoreName" -}}
+{{ include "workbench.fullname" . }}-product-store
+{{- end }}
+
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -67,6 +71,22 @@ API Selector labels
 */}}
 {{- define "workbench.apiSelectorLabels" -}}
 workbench.j4ns8i.github.com/component: api
+{{- end }}
+
+{{/*
+Product store labels
+*/}}
+{{- define "workbench.productStoreLabels" -}}
+{{ include "workbench.commonLabels" . }}
+{{ include "workbench.commonSelectorLabels" . }}
+{{ include "workbench.productStoreSelectorLabels" . }}
+{{- end }}
+
+{{/*
+Product store Selector labels
+*/}}
+{{- define "workbench.productStoreSelectorLabels" -}}
+workbench.j4ns8i.github.com/component: product-store
 {{- end }}
 
 {{/*

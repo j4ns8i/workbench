@@ -185,6 +185,8 @@ pyrightconfig.json
 ### Custom overrides ###
 
 !api/build/
+!product-store/build/
+bin/
 
 # Taskfile dependency cache
 .task/

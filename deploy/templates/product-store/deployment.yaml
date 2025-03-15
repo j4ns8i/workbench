@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "workbench.productStoreName" . }}
+  labels:
+    {{- include "workbench.productStoreLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.productStore.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "workbench.productStoreSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "workbench.productStoreLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "workbench.serviceAccountName" . }}
+      containers:
+        - name: "product-store"
+          image: "workbench/product-store:latest"
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_HOST
+              value: {{ include "workbench.redisHost" . | quote }}
+            - name: REDIS_PORT
+              value: {{ include "workbench.redisPort" . | quote }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "workbench.redisSecretName" . }}
+                  key: {{ include "workbench.redisSecretPasswordKey" . }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources: {}

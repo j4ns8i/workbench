@@ -37,6 +37,16 @@ tasks:
     cmds:
       - helm template local deploy/ --release-name --output-dir=deploy/rendered/
 
+  build-api:
+    desc: "Build the API container image"
+    cmds:
+      - docker build ./api -f ./api/build/Dockerfile -t workbench/api:latest
+
+  build-product-store:
+    desc: "Build the product-store container image"
+    cmds:
+      - docker build ./product-store -f ./product-store/build/Dockerfile -t workbench/product-store:latest
+
   run-redis-cli:
     desc: "Connect to the local dev cluster with redis-cli"
     cmds:

@@ -16,12 +16,46 @@ def build_api():
 
 build_api()
 
+def build_product_store():
+    name = 'product-store'
+    local_resource(
+        name='bin.' + name,
+        cmd='CGO_ENABLED=0 GOOS=linux go build -o ./bin/' + name,
+        deps=[
+            './{}/{}'.format(name, basename) for basename in [
+                'main.go',
+                'models.go',
+                'http.go',
+                'go.mod',
+                'go.sum',
+            ]
+        ],
+        dir=name,
+    )
+
+    entrypoint = '/usr/local/bin/' + name
+    docker_build_with_restart(
+        ref='workbench/' + name,
+        context=name,
+        entrypoint=[entrypoint],
+        dockerfile='{}/build/tilt.Dockerfile'.format(name),
+        only=[
+            './bin',
+        ],
+        live_update=[
+            sync('./{n}/bin/{n}'.format(n=name), entrypoint),
+        ],
+    )
+
+build_product_store()
+
 ### Deploy steps
 
 def apply_helm_chart():
     chart = helm('deploy', name='workbench')
     k8s_yaml(chart)
     k8s_resource(workload='workbench-api', port_forwards=[8000])
+    k8s_resource(workload='workbench-product-store', port_forwards=[8080])
 
 apply_helm_chart()
 

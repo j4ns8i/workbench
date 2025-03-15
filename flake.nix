@@ -27,6 +27,7 @@
           stern
           k3d
           redis
+          httpie
         ];
       };
     }
