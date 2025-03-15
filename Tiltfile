@@ -21,15 +21,8 @@ def build_product_store():
     local_resource(
         name='bin.' + name,
         cmd='CGO_ENABLED=0 GOOS=linux go build -o ./bin/' + name,
-        deps=[
-            './{}/{}'.format(name, basename) for basename in [
-                'main.go',
-                'models.go',
-                'http.go',
-                'go.mod',
-                'go.sum',
-            ]
-        ],
+        deps=[name],
+        ignore=[name + '/bin/*'],
         dir=name,
     )
 
