@@ -18,6 +18,7 @@ func main() {
 		Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
 		Password: redisPassword,
 		DB:       0, // use default DB
+		Protocol: 3,
 	})
 
 	// Create new handler with Redis client

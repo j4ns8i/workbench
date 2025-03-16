@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"product-store/pkg/xredis"
+
 	"github.com/cespare/xxhash/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/oklog/ulid/v2"
@@ -15,16 +17,19 @@ import (
 
 type Handler struct {
 	Echo   *echo.Echo
-	Redis  *redis.Client
+	Redis  *xredis.Client
 	Logger zerolog.Logger
 }
 
 func NewHandler(redisClient *redis.Client) *Handler {
 	e := echo.New()
 
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
-	h := &Handler{Echo: e, Redis: redisClient, Logger: logger}
+	logger := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
+	h := &Handler{
+		Echo:   e,
+		Redis:  &xredis.Client{UniversalClient: redisClient},
+		Logger: logger,
+	}
 	e.GET("/", h.GetHelloWorld)
 	e.GET("/healthz", h.Healthz)
 	e.PUT("/product-categories", h.PutProductCategory)
@@ -64,27 +69,32 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Invalid request payload")
 	}
 
-	key := fmt.Sprintf("PRODUCTCATEGORY:%s", category.Name)
+	key := buildRedisKey("PRODUCTCATEGORY", category.Name)
 
-	// Check if the category already exists
-	var val ProductCategoryRedis
-	err := h.Redis.HGetAll(c.Request().Context(), key).Scan(&val)
-	if err == redis.Nil {
-		// Generate new ULID if category doesn't exist
-		category.ID = ulid.Make()
-	} else if err != nil {
+	// check if the category already exists
+	var (
+		id  ulid.ULID
+		obj ProductCategoryRedis
+	)
+	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
+	if err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to check product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
+	}
+	if !found {
+		// not found, create a new ID
+		id = ulid.Make()
 	} else {
-		u, err := NewULIDFromString(val.ID)
+		// Use existing ID
+		u, err := NewULIDFromString(obj.ID)
 		if err != nil {
 			h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse existing product category ID")
 			return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 		}
-		category.ID = u
+		id = u
 	}
 
-	category.ID = ulid.Make()
+	category.ID = id
 	productCategoryRedis := RedisFromProductCategory(category)
 	if err := h.Redis.HSet(c.Request().Context(), key, &productCategoryRedis).Err(); err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to store product category")
@@ -97,17 +107,29 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 func (h *Handler) GetProductCategory(c echo.Context) error {
 	name := c.Param("productCategoryName")
 	key := buildRedisKey("PRODUCTCATEGORY", name)
-	val, err := h.Redis.Get(c.Request().Context(), key).Result()
-	if err == redis.Nil {
-		return c.JSON(http.StatusNotFound, "Product category not found")
-	} else if err != nil {
+
+	var obj ProductCategoryRedis
+	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
+	if err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to retrieve product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
-	var category ProductCategory
-	if err := json.Unmarshal([]byte(val), &category); err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to unmarshal product category")
+	if !found {
+		return c.JSON(http.StatusNotFound, "Product category not found")
+	}
+
+	// Convert from Redis model to response model
+	id, err := NewULIDFromString(obj.ID)
+	if err != nil {
+		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse product category ID")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
+	}
+
+	category := ProductCategory{
+		ID: id,
+		ProductCategoryData: ProductCategoryData{
+			Name: name,
+		},
 	}
 	return c.JSON(http.StatusOK, category)
 }
