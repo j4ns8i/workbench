@@ -1,0 +1,5 @@
+dir: "pkg/mock/{{.PackagePath}}"
+packages:
+  github.com/redis/go-redis/v9:
+    interfaces:
+      UniversalClient:
