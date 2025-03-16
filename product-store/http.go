@@ -42,7 +42,7 @@ func NewHandler(redisClient *redis.Client) *Handler {
 
 func (h *Handler) ListenAndServe() {
 	if err := h.Echo.Start(":8080"); err != nil {
-		h.Echo.Logger.Fatal("Shutting down the server")
+		h.Logger.Fatal().Msg("Shutting down the server")
 	}
 }
 
@@ -70,6 +70,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 	}
 
 	key := buildRedisKey("PRODUCTCATEGORY", category.Name)
+	logger := h.Logger.With().Str("product_category_name", category.Name).Str("product_category_key", key).Logger()
 
 	// check if the category already exists
 	var (
@@ -78,7 +79,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 	)
 	found, err := xredis.HGetAllScan(c.Request().Context(), h.Redis, key, &obj)
 	if err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to check product category")
+		logger.Err(err).Msg("Failed to check product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 	if !found {
@@ -88,7 +89,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 		// Use existing ID
 		u, err := api.NewULIDFromString(obj.ID)
 		if err != nil {
-			h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse existing product category ID")
+			logger.Err(err).Msg("Failed to parse existing product category ID")
 			return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 		}
 		id = u
@@ -97,7 +98,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 	category.ID = id
 	productCategoryRedis := xredis.FromAPIProductCategory(category)
 	if err := h.Redis.HSet(c.Request().Context(), key, &productCategoryRedis).Err(); err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to store product category")
+		logger.Err(err).Msg("Failed to store product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 
@@ -107,11 +108,12 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 func (h *Handler) GetProductCategory(c echo.Context) error {
 	name := c.Param("productCategoryName")
 	key := buildRedisKey("PRODUCTCATEGORY", name)
+	logger := h.Logger.With().Str("product_category_name", name).Str("product_category_key", key).Logger()
 
 	var obj xredis.ProductCategory
 	found, err := xredis.HGetAllScan(c.Request().Context(), h.Redis, key, &obj)
 	if err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to retrieve product category")
+		logger.Err(err).Msg("Failed to retrieve product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 	if !found {
@@ -120,7 +122,7 @@ func (h *Handler) GetProductCategory(c echo.Context) error {
 
 	category, err := xredis.ToAPIProductCategory(obj)
 	if err != nil {
-		h.Logger.Err(err).Str("key", key).Msg("Failed to convert product category")
+		logger.Err(err).Msg("Failed to convert product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 
@@ -135,7 +137,7 @@ func (h *Handler) PutProduct(c echo.Context) error {
 	// Build keys for product and its category
 	productKey := buildRedisKey("PRODUCT", product.Name)
 	categoryKey := buildRedisKey("PRODUCTCATEGORY", product.Category)
-	logger := h.Logger.With().Str("productKey", productKey).Str("categoryKey", categoryKey).Logger()
+	logger := h.Logger.With().Str("product_key", productKey).Str("product_category_key", categoryKey).Logger()
 	ctx := c.Request().Context()
 
 	// Use WATCH/MULTI/EXEC pipeline to check category existence and set product
@@ -155,7 +157,7 @@ func (h *Handler) PutProduct(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if !found {
 			product.ID = ulid.Make()
 		} else {
@@ -190,7 +192,7 @@ func (h *Handler) PutProduct(c echo.Context) error {
 func (h *Handler) GetProduct(c echo.Context) error {
 	name := c.Param("productName")
 	key := buildRedisKey("PRODUCT", name)
-	logger := h.Logger.With().Str("name", name).Str("key", key).Logger()
+	logger := h.Logger.With().Str("product_name", name).Str("product_key", key).Logger()
 
 	var obj xredis.Product
 	found, err := xredis.HGetAllScan(c.Request().Context(), h.Redis, key, &obj)
@@ -205,7 +207,7 @@ func (h *Handler) GetProduct(c echo.Context) error {
 
 	product, err := xredis.ToAPIProduct(obj)
 	if err != nil {
-		h.Logger.Err(err).Str("key", key).Msg("Failed to convert product")
+		logger.Err(err).Msg("Failed to convert product")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 	return c.JSON(http.StatusOK, product)
