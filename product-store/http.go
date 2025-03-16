@@ -76,7 +76,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 		id  ulid.ULID
 		obj xredis.ProductCategory
 	)
-	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
+	found, err := xredis.HGetAllScan(c.Request().Context(), h.Redis, key, &obj)
 	if err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to check product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
@@ -109,7 +109,7 @@ func (h *Handler) GetProductCategory(c echo.Context) error {
 	key := buildRedisKey("PRODUCTCATEGORY", name)
 
 	var obj xredis.ProductCategory
-	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
+	found, err := xredis.HGetAllScan(c.Request().Context(), h.Redis, key, &obj)
 	if err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to retrieve product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
@@ -132,35 +132,55 @@ func (h *Handler) PutProduct(c echo.Context) error {
 	if err := c.Bind(&product); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
-	key := buildRedisKey("PRODUCT", product.Name)
+	// Build keys for product and its category
+	productKey := buildRedisKey("PRODUCT", product.Name)
+	categoryKey := buildRedisKey("PRODUCTCATEGORY", product.Category)
+	logger := h.Logger.With().Str("productKey", productKey).Str("categoryKey", categoryKey).Logger()
+	ctx := c.Request().Context()
 
-	// check if the product already exists
-	var (
-		id  ulid.ULID
-		obj xredis.Product
-	)
-	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
-	if err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to check product")
-		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
-	}
-	if !found {
-		// not found, create a new ID
-		id = ulid.Make()
-	} else {
-		// Use existing ID
-		u, err := api.NewULIDFromString(obj.ID)
+	// Use WATCH/MULTI/EXEC pipeline to check category existence and set product
+	txFunc := func(tx *redis.Tx) error {
+		// Check if the product category exists
+		exists, err := tx.Exists(ctx, categoryKey).Result()
 		if err != nil {
-			h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse existing product ID")
-			return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
+			return err
 		}
-		id = u
+		if exists == 0 {
+			return fmt.Errorf("product category not found")
+		}
+
+		// Check if the product already exists to preserve its ID
+		var obj xredis.Product
+		found, err := xredis.HGetAllScan(ctx, tx, productKey, &obj)
+		if err != nil {
+			return err
+		}
+		
+		if !found {
+			product.ID = ulid.Make()
+		} else {
+			u, err := api.NewULIDFromString(obj.ID)
+			if err != nil {
+				return err
+			}
+			product.ID = u
+		}
+
+		pipe := tx.TxPipeline()
+		productRedis := xredis.FromAPIProduct(product)
+		pipe.HSet(ctx, productKey, productRedis)
+		_, err = pipe.Exec(ctx)
+		return err
 	}
 
-	product.ID = id
-	productRedis := xredis.FromAPIProduct(product)
-	if err := h.Redis.HSet(c.Request().Context(), key, &productRedis).Err(); err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to store product")
+	err := h.Redis.Watch(ctx, txFunc, categoryKey, productKey)
+	if err != nil {
+		// TODO: redesign error handling
+		if err.Error() == "product category not found" {
+			logger.Info().Msg("Product category not found")
+			return c.JSON(http.StatusNotFound, "Product category not found")
+		}
+		logger.Err(err).Msg("Failed to store product")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 
@@ -173,7 +193,7 @@ func (h *Handler) GetProduct(c echo.Context) error {
 	logger := h.Logger.With().Str("name", name).Str("key", key).Logger()
 
 	var obj xredis.Product
-	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
+	found, err := xredis.HGetAllScan(c.Request().Context(), h.Redis, key, &obj)
 	if err != nil {
 		logger.Err(err).Msg("failed to retrieve product")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
