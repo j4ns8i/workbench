@@ -1,16 +1,11 @@
-package main
+package api
 
 import (
-	// "encoding"
-	"math/rand"
+	"crypto/rand"
 	"time"
 
 	"github.com/oklog/ulid/v2"
 )
-
-func NewULID() ulid.ULID {
-	return ulid.MustNew(ulid.Timestamp(time.Now()), ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0))
-}
 
 // A fictional product
 type Product struct {
@@ -36,16 +31,8 @@ type ProductCategoryData struct {
 	Name string // The name of the product category
 }
 
-type ProductCategoryRedis struct {
-	ID   string `redis:"id"`   // The unique identifier for the product category
-	Name string `redis:"name"` // The name of the product category
-}
-
-func RedisFromProductCategory(category ProductCategory) ProductCategoryRedis {
-	return ProductCategoryRedis{
-		ID:   category.ID.String(),
-		Name: category.Name,
-	}
+func NewULID() ulid.ULID {
+	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 }
 
 func NewULIDFromString(s string) (ulid.ULID, error) {

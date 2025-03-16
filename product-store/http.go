@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 
+	"product-store/pkg/api"
 	"product-store/pkg/xredis"
 
 	"github.com/cespare/xxhash/v2"
@@ -35,7 +35,7 @@ func NewHandler(redisClient *redis.Client) *Handler {
 	e.PUT("/product-categories", h.PutProductCategory)
 	e.GET("/product-categories/:productCategoryName", h.GetProductCategory)
 	e.PUT("/products", h.PutProduct)
-	e.GET("/product/:productName", h.GetProduct)
+	e.GET("/products/:productName", h.GetProduct)
 
 	return h
 }
@@ -64,7 +64,7 @@ func (h *Handler) Healthz(c echo.Context) error {
 }
 
 func (h *Handler) PutProductCategory(c echo.Context) error {
-	var category ProductCategory
+	var category api.ProductCategory
 	if err := c.Bind(&category); err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid request payload")
 	}
@@ -74,7 +74,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 	// check if the category already exists
 	var (
 		id  ulid.ULID
-		obj ProductCategoryRedis
+		obj xredis.ProductCategory
 	)
 	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
 	if err != nil {
@@ -86,7 +86,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 		id = ulid.Make()
 	} else {
 		// Use existing ID
-		u, err := NewULIDFromString(obj.ID)
+		u, err := api.NewULIDFromString(obj.ID)
 		if err != nil {
 			h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse existing product category ID")
 			return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
@@ -95,7 +95,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 	}
 
 	category.ID = id
-	productCategoryRedis := RedisFromProductCategory(category)
+	productCategoryRedis := xredis.FromAPIProductCategory(category)
 	if err := h.Redis.HSet(c.Request().Context(), key, &productCategoryRedis).Err(); err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to store product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
@@ -108,7 +108,7 @@ func (h *Handler) GetProductCategory(c echo.Context) error {
 	name := c.Param("productCategoryName")
 	key := buildRedisKey("PRODUCTCATEGORY", name)
 
-	var obj ProductCategoryRedis
+	var obj xredis.ProductCategory
 	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
 	if err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to retrieve product category")
@@ -118,71 +118,74 @@ func (h *Handler) GetProductCategory(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "Product category not found")
 	}
 
-	// Convert from Redis model to response model
-	id, err := NewULIDFromString(obj.ID)
+	category, err := xredis.ToAPIProductCategory(obj)
 	if err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse product category ID")
+		h.Logger.Err(err).Str("key", key).Msg("Failed to convert product category")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 
-	category := ProductCategory{
-		ID: id,
-		ProductCategoryData: ProductCategoryData{
-			Name: name,
-		},
-	}
 	return c.JSON(http.StatusOK, category)
 }
 
 func (h *Handler) PutProduct(c echo.Context) error {
-	var product Product
+	var product api.Product
 	if err := c.Bind(&product); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 	key := buildRedisKey("PRODUCT", product.Name)
 
-	err := h.Redis.Watch(c.Request().Context(), func(tx *redis.Tx) error {
-		val, err := tx.Get(c.Request().Context(), key).Result()
-		if err != nil && err != redis.Nil {
-			return err
-		}
-
-		if err == redis.Nil {
-			product.ID = NewULID()
-		} else {
-			var existingProduct Product
-			if err := json.Unmarshal([]byte(val), &existingProduct); err != nil {
-				return err
-			}
-			product.ID = existingProduct.ID
-		}
-
-		_, err = tx.TxPipelined(c.Request().Context(), func(pipe redis.Pipeliner) error {
-			return pipe.Set(c.Request().Context(), key, product, 0).Err()
-		})
-		return err
-	}, key)
-
+	// check if the product already exists
+	var (
+		id  ulid.ULID
+		obj xredis.Product
+	)
+	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
 	if err != nil {
+		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to check product")
+		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
+	}
+	if !found {
+		// not found, create a new ID
+		id = ulid.Make()
+	} else {
+		// Use existing ID
+		u, err := api.NewULIDFromString(obj.ID)
+		if err != nil {
+			h.Logger.Error().Err(err).Str("key", key).Msg("Failed to parse existing product ID")
+			return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
+		}
+		id = u
+	}
+
+	product.ID = id
+	productRedis := xredis.FromAPIProduct(product)
+	if err := h.Redis.HSet(c.Request().Context(), key, &productRedis).Err(); err != nil {
 		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to store product")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
+
 	return c.JSON(http.StatusOK, product)
 }
 
 func (h *Handler) GetProduct(c echo.Context) error {
 	name := c.Param("productName")
 	key := buildRedisKey("PRODUCT", name)
-	val, err := h.Redis.Get(c.Request().Context(), key).Result()
-	if err == redis.Nil {
-		return c.JSON(http.StatusNotFound, "Product not found")
-	} else if err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to retrieve product")
+	logger := h.Logger.With().Str("name", name).Str("key", key).Logger()
+
+	var obj xredis.Product
+	found, err := h.Redis.HGetAllScan(c.Request().Context(), key, &obj)
+	if err != nil {
+		logger.Err(err).Msg("failed to retrieve product")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
-	var product Product
-	if err := json.Unmarshal([]byte(val), &product); err != nil {
-		h.Logger.Error().Err(err).Str("key", key).Msg("Failed to unmarshal product")
+	if !found {
+		logger.Info().Msg("product not found")
+		return c.JSON(http.StatusNotFound, "Product not found")
+	}
+
+	product, err := xredis.ToAPIProduct(obj)
+	if err != nil {
+		h.Logger.Err(err).Str("key", key).Msg("Failed to convert product")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 	return c.JSON(http.StatusOK, product)
