@@ -150,13 +150,10 @@ func (h *Handler) PutProduct(c echo.Context) error {
 		if !exists {
 			product.ID = ulid.Make()
 		} else {
-			product.ID, err = api.NewULIDFromString(obj.ID)
-			if err != nil {
-				return err
-			}
+			product.ID = obj.ID
 		}
 
-		return tx.PutProduct(ctx, xredis.FromAPIProduct(product))
+		return tx.PutProduct(ctx, product)
 	})
 
 	if err != nil {
