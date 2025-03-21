@@ -24,7 +24,8 @@ func buildProductCategoryKey(categoryName string) string {
 
 func putProduct(ctx context.Context, c redis.HashCmdable, p api.Product) error {
 	key := buildProductKey(p.Name)
-	return c.HMSet(ctx, key, p).Err()
+	obj := FromAPIProduct(p)
+	return c.HMSet(ctx, key, obj).Err()
 }
 
 func getProduct(ctx context.Context, c redis.HashCmdable, productName string) (api.Product, error) {
