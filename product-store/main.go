@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"product-store/pkg/api"
 	"product-store/pkg/xredis"
 )
 
@@ -27,7 +28,7 @@ func main() {
 	redisClient := xredis.NewClient(opts)
 
 	// Create new handler with Redis client
-	handler := NewHandler(&logger, redisClient)
+	handler := api.NewHandler(&logger, redisClient)
 
 	// Start server
 	handler.ListenAndServe()

@@ -7,7 +7,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/redis/go-redis/v9"
 
-	"product-store/pkg/api"
+	"product-store/pkg/types"
 )
 
 func buildRedisKey(kind, name string) string {
@@ -23,17 +23,17 @@ func buildProductCategoryKey(categoryName string) string {
 	return buildRedisKey("PRODUCTCATEGORY", categoryName)
 }
 
-func putProduct(ctx context.Context, c redis.HashCmdable, p api.Product) error {
+func putProduct(ctx context.Context, c redis.HashCmdable, p types.Product) error {
 	key := buildProductKey(p.Name)
 	obj := FromAPIProduct(p)
 	return c.HMSet(ctx, key, obj).Err()
 }
 
-func getProduct(ctx context.Context, c redis.HashCmdable, productName string) (api.Product, error) {
+func getProduct(ctx context.Context, c redis.HashCmdable, productName string) (types.Product, error) {
 	key := buildProductKey(productName)
 
 	var (
-		p   api.Product
+		p   types.Product
 		obj Product
 	)
 	found, err := HGetAllScan(ctx, c, key, &obj)
@@ -47,17 +47,17 @@ func getProduct(ctx context.Context, c redis.HashCmdable, productName string) (a
 	return ToAPIProduct(obj)
 }
 
-func putProductCategory(ctx context.Context, c redis.HashCmdable, pc api.ProductCategory) error {
+func putProductCategory(ctx context.Context, c redis.HashCmdable, pc types.ProductCategory) error {
 	key := buildProductCategoryKey(pc.Name)
 	obj := FromAPIProductCategory(pc)
 	return c.HMSet(ctx, key, obj).Err()
 }
 
-func getProductCategory(ctx context.Context, c redis.HashCmdable, categoryName string) (api.ProductCategory, error) {
+func getProductCategory(ctx context.Context, c redis.HashCmdable, categoryName string) (types.ProductCategory, error) {
 	key := buildProductCategoryKey(categoryName)
 
 	var (
-		pc  api.ProductCategory
+		pc  types.ProductCategory
 		obj ProductCategory
 	)
 	found, err := HGetAllScan(ctx, c, key, &obj)

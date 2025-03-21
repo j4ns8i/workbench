@@ -5,7 +5,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"product-store/pkg/api"
+	"product-store/pkg/types"
 )
 
 // ProductCategory is the Redis representation of a ProductCategory.
@@ -23,7 +23,7 @@ type Product struct {
 }
 
 // FromAPIProduct converts a Product to its Redis representation.
-func FromAPIProduct(product api.Product) Product {
+func FromAPIProduct(product types.Product) Product {
 	return Product{
 		ID:       product.ID.String(),
 		Name:     product.Name,
@@ -33,15 +33,15 @@ func FromAPIProduct(product api.Product) Product {
 }
 
 // ToAPIProduct converts a ProductRedis back to a Product.
-func ToAPIProduct(obj Product) (api.Product, error) {
-	id, err := api.NewULIDFromString(obj.ID)
+func ToAPIProduct(obj Product) (types.Product, error) {
+	id, err := types.NewULIDFromString(obj.ID)
 	if err != nil {
-		return api.Product{}, err
+		return types.Product{}, err
 	}
 
-	p := api.Product{
+	p := types.Product{
 		ID: id,
-		ProductData: api.ProductData{
+		ProductData: types.ProductData{
 			Name:     obj.Name,
 			Category: obj.Category,
 			Price:    obj.Price,
@@ -52,7 +52,7 @@ func ToAPIProduct(obj Product) (api.Product, error) {
 
 // FromAPIProductCategory converts a ProductCategory to its Redis
 // representation.
-func FromAPIProductCategory(category api.ProductCategory) ProductCategory {
+func FromAPIProductCategory(category types.ProductCategory) ProductCategory {
 	return ProductCategory{
 		ID:   category.ID.String(),
 		Name: category.Name,
@@ -61,15 +61,15 @@ func FromAPIProductCategory(category api.ProductCategory) ProductCategory {
 
 // ToAPIProductCategory converts a ProductCategoryRedis back to
 // a ProductCategory.
-func ToAPIProductCategory(obj ProductCategory) (api.ProductCategory, error) {
-	id, err := api.NewULIDFromString(obj.ID)
+func ToAPIProductCategory(obj ProductCategory) (types.ProductCategory, error) {
+	id, err := types.NewULIDFromString(obj.ID)
 	if err != nil {
-		return api.ProductCategory{}, err
+		return types.ProductCategory{}, err
 	}
 
-	p := api.ProductCategory{
+	p := types.ProductCategory{
 		ID: id,
-		ProductCategoryData: api.ProductCategoryData{
+		ProductCategoryData: types.ProductCategoryData{
 			Name: obj.Name,
 		},
 	}

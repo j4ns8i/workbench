@@ -4,7 +4,6 @@ linters:
     - contextcheck
     - errname
     - errorlint
-    - funlen
     - gocritic
     - gosec
     - importas

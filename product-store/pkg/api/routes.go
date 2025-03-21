@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -9,48 +9,13 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/oklog/ulid/v2"
-	"github.com/rs/zerolog"
 
-	"product-store/pkg/api"
+	"product-store/pkg/types"
 	"product-store/pkg/xredis"
 )
 
-type Handler struct {
-	Echo   *echo.Echo
-	Redis  *xredis.Client
-	Logger *zerolog.Logger
-}
-
-func NewHandler(logger *zerolog.Logger, redisClient *xredis.Client) *Handler {
-	e := echo.New()
-
-	h := &Handler{
-		Echo:   e,
-		Redis:  &xredis.Client{UniversalClient: redisClient},
-		Logger: logger,
-	}
-	e.GET("/", h.GetHelloWorld)
-	e.GET("/healthz", h.Healthz)
-	e.PUT("/product-categories", h.PutProductCategory)
-	e.GET("/product-categories/:productCategoryName", h.GetProductCategory)
-	e.PUT("/products", h.PutProduct)
-	e.GET("/products/:productName", h.GetProduct)
-
-	return h
-}
-
-func (h *Handler) ListenAndServe() {
-	if err := h.Echo.Start(":8080"); err != nil {
-		h.Logger.Fatal().Msg("Shutting down the server")
-	}
-}
-
 func buildRedisKey(kind, name string) string {
 	return kind + ":" + fmt.Sprintf("%x", xxhash.Sum64String(name))
-}
-
-func (h *Handler) GetHelloWorld(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello World!")
 }
 
 func (h *Handler) Healthz(c echo.Context) error {
@@ -63,7 +28,7 @@ func (h *Handler) Healthz(c echo.Context) error {
 }
 
 func (h *Handler) PutProductCategory(c echo.Context) error {
-	var category api.ProductCategory
+	var category types.ProductCategory
 	if err := c.Bind(&category); err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid request payload")
 	}
@@ -86,7 +51,7 @@ func (h *Handler) PutProductCategory(c echo.Context) error {
 		id = ulid.Make()
 	} else {
 		// Use existing ID
-		u, err := api.NewULIDFromString(obj.ID)
+		u, err := types.NewULIDFromString(obj.ID)
 		if err != nil {
 			logger.Err(err).Msg("Failed to parse existing product category ID")
 			return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
@@ -130,7 +95,7 @@ func (h *Handler) GetProductCategory(c echo.Context) error {
 
 func (h *Handler) PutProduct(c echo.Context) error {
 	ctx := c.Request().Context()
-	var product api.Product
+	var product types.Product
 	if err := c.Bind(&product); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}

@@ -3,12 +3,12 @@ package store
 import (
 	"context"
 
-	"product-store/pkg/api"
+	"product-store/pkg/types"
 )
 
 type Store interface {
-	GetProduct(context.Context, string) (api.Product, error)
-	PutProduct(context.Context, api.Product) error
-	GetProductCategory(context.Context, string) (api.ProductCategory, error)
-	PutProductCategory(context.Context, api.ProductCategory) error
+	GetProduct(context.Context, string) (types.Product, error)
+	PutProduct(context.Context, types.Product) error
+	GetProductCategory(context.Context, string) (types.ProductCategory, error)
+	PutProductCategory(context.Context, types.ProductCategory) error
 }

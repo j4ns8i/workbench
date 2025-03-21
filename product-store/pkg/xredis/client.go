@@ -3,12 +3,13 @@ package xredis
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"product-store/pkg/api"
 	"product-store/pkg/store"
+	"product-store/pkg/types"
 )
 
 type Client struct {
@@ -32,6 +33,8 @@ func NewClient(opts ClientOpts) *Client {
 		Password: opts.Password,
 		DB:       0,
 		Protocol: 3,
+		MaxRetries: 10,
+		DialTimeout: 1 * time.Second,
 	})
 
 	client.AddHook(&loggingHook{Logger: opts.Logger})
@@ -42,18 +45,18 @@ func NewClient(opts ClientOpts) *Client {
 	}
 }
 
-func (c *Client) GetProductCategory(ctx context.Context, categoryName string) (api.ProductCategory, error) {
+func (c *Client) GetProductCategory(ctx context.Context, categoryName string) (types.ProductCategory, error) {
 	return getProductCategory(ctx, c, categoryName)
 }
 
-func (c *Client) PutProductCategory(ctx context.Context, pc api.ProductCategory) error {
+func (c *Client) PutProductCategory(ctx context.Context, pc types.ProductCategory) error {
 	return putProductCategory(ctx, c, pc)
 }
 
-func (c *Client) GetProduct(ctx context.Context, productName string) (api.Product, error) {
+func (c *Client) GetProduct(ctx context.Context, productName string) (types.Product, error) {
 	return getProduct(ctx, c, productName)
 }
 
-func (c *Client) PutProduct(ctx context.Context, p api.Product) error {
+func (c *Client) PutProduct(ctx context.Context, p types.Product) error {
 	return putProduct(ctx, c, p)
 }

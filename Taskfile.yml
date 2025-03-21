@@ -1,3 +1,7 @@
+.:
+  REDISCLI_AUTH: &REDISCLI_AUTH
+    sh: kubectl get secret --namespace default redis -o jsonpath="{.data.redis-password}" | base64 -d
+
 version: '3'
 tasks:
 
@@ -52,8 +56,7 @@ tasks:
     cmds:
       - redis-cli
     env:
-      REDISCLI_AUTH:
-        sh: kubectl get secret --namespace default redis -o jsonpath="{.data.redis-password}" | base64 -d
+      REDISCLI_AUTH: *REDISCLI_AUTH
 
   test-api:
     desc: "Run the api tests"
@@ -61,14 +64,31 @@ tasks:
     cmds:
       - uv run pytest
 
+  test-product-store:
+    desc: "Run the product-store tests"
+    dir: product-store
+    vars:
+      INTEGRATION: '{{ .INTEGRATION | default "0" }}'
+      TEST_PATH: '{{ if eq .INTEGRATION "1" }}./pkg/test/internal/integration/...{{ else }}./...{{ end }}'
+      TEST_FLAGS: '{{ if eq .INTEGRATION "1" -}} -tags=integration {{- end }}'
+    env:
+      INTEGRATION: 0
+      PS_TEST_REDIS_HOST: localhost
+      PS_TEST_REDIS_PORT: 6379
+      PS_TEST_REDIS_PASSWORD: *REDISCLI_AUTH
+    cmds:
+      - go tool gotestsum --format pkgname -- {{ .TEST_FLAGS }} -count=1 {{.TEST_PATH}}
+
   format-go:
     desc: "Format Go code"
+    dir: product-store
     cmds:
-      - cd product-store && go tool gci write -s standard -s default -s localmodule --skip-generated .
-      - cd product-store && gofmt -w .
+      - go tool gci write -s standard -s default -s localmodule --skip-generated .
+      - gofmt -w .
 
   lint-go:
     desc: "Lint Go code"
+    dir: product-store
     cmds:
-      - cd product-store && go vet ./...
-      - cd product-store && go tool golangci-lint run -c ../.golangci.yml
+      - go vet ./...
+      - go tool golangci-lint run -c ../.golangci.yml
