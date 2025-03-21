@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"product-store/pkg/xredis"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -13,16 +13,23 @@ func main() {
 	redisPort := getEnv("REDIS_PORT", "6379")
 	redisPassword := getEnv("REDIS_PASSWORD", "")
 
-	// Set up Redis client
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
+	logger := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
+
+	opts := xredis.ClientOpts{
+		Host:     redisHost,
+		Port:     redisPort,
 		Password: redisPassword,
-		DB:       0, // use default DB
-		Protocol: 3,
-	})
+		Logger:   &logger,
+	}
+
+	// Set up Redis client using xredis package
+	redisClient := xredis.NewClient(opts)
 
 	// Create new handler with Redis client
-	handler := NewHandler(rdb)
+	handler := NewHandler(&logger, redisClient)
+
+	// Start server
+	handler.ListenAndServe()
 
 	// Start server
 	handler.ListenAndServe()

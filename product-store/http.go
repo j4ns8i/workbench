@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"os"
 
 	"product-store/pkg/api"
 	"product-store/pkg/xredis"
@@ -11,20 +11,18 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/oklog/ulid/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
 
 type Handler struct {
 	Echo   *echo.Echo
 	Redis  *xredis.Client
-	Logger zerolog.Logger
+	Logger *zerolog.Logger
 }
 
-func NewHandler(redisClient *redis.Client) *Handler {
+func NewHandler(logger *zerolog.Logger, redisClient *xredis.Client) *Handler {
 	e := echo.New()
 
-	logger := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 	h := &Handler{
 		Echo:   e,
 		Redis:  &xredis.Client{UniversalClient: redisClient},
@@ -130,59 +128,42 @@ func (h *Handler) GetProductCategory(c echo.Context) error {
 }
 
 func (h *Handler) PutProduct(c echo.Context) error {
+	ctx := c.Request().Context()
 	var product api.Product
 	if err := c.Bind(&product); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
-	// Build keys for product and its category
-	productKey := buildRedisKey("PRODUCT", product.Name)
-	categoryKey := buildRedisKey("PRODUCTCATEGORY", product.Category)
-	logger := h.Logger.With().Str("product_key", productKey).Str("product_category_key", categoryKey).Logger()
-	ctx := c.Request().Context()
 
-	// Use WATCH/MULTI/EXEC pipeline to check category existence and set product
-	txFunc := func(tx *redis.Tx) error {
-		// Check if the product category exists
-		exists, err := tx.Exists(ctx, categoryKey).Result()
-		if err != nil {
-			return err
-		}
-		if exists == 0 {
-			return fmt.Errorf("product category not found")
-		}
-
+	t := xredis.NewTransaction(h.Redis)
+	t.Prepare(xredis.WithProductCategoryExists(product.Category))
+	err := t.Exec(ctx, func(ctx context.Context, tx *xredis.Tx) error {
 		// Check if the product already exists to preserve its ID
-		var obj xredis.Product
-		found, err := xredis.HGetAllScan(ctx, tx, productKey, &obj)
+		var exists = true
+		obj, err := tx.GetProduct(ctx, product.Name)
 		if err != nil {
-			return err
+			if err == xredis.ErrorNotFound {
+				exists = false
+			} else {
+				return err
+			}
 		}
-
-		if !found {
+		if !exists {
 			product.ID = ulid.Make()
 		} else {
-			u, err := api.NewULIDFromString(obj.ID)
+			product.ID, err = api.NewULIDFromString(obj.ID)
 			if err != nil {
 				return err
 			}
-			product.ID = u
 		}
 
-		pipe := tx.TxPipeline()
-		productRedis := xredis.FromAPIProduct(product)
-		pipe.HSet(ctx, productKey, productRedis)
-		_, err = pipe.Exec(ctx)
-		return err
-	}
+		return tx.PutProduct(ctx, xredis.FromAPIProduct(product))
+	})
 
-	err := h.Redis.Watch(ctx, txFunc, categoryKey, productKey)
 	if err != nil {
-		// TODO: redesign error handling
-		if err.Error() == "product category not found" {
-			logger.Info().Msg("Product category not found")
+		if err == xredis.ErrorProductCategoryNotFound {
 			return c.JSON(http.StatusNotFound, "Product category not found")
 		}
-		logger.Err(err).Msg("Failed to store product")
+		h.Logger.Err(err).Msg("Failed to execute transaction")
 		return c.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 
