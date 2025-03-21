@@ -57,8 +57,9 @@ tasks:
 
   test-api:
     desc: "Run the api tests"
+    dir: api
     cmds:
-      - pytest
+      - uv run pytest
 
   format-go:
     desc: "Format Go code"
