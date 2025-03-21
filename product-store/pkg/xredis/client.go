@@ -3,10 +3,11 @@ package xredis
 import (
 	"context"
 	"fmt"
-	"product-store/pkg/api"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+
+	"product-store/pkg/api"
 )
 
 type Client struct {

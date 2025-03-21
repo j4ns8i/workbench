@@ -3,10 +3,11 @@ package xredis
 import (
 	"context"
 	"fmt"
-	"product-store/pkg/api"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/redis/go-redis/v9"
+
+	"product-store/pkg/api"
 )
 
 func buildRedisKey(kind, name string) string {

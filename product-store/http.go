@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"product-store/pkg/api"
-	"product-store/pkg/xredis"
-
 	"github.com/cespare/xxhash/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog"
+
+	"product-store/pkg/api"
+	"product-store/pkg/xredis"
 )
 
 type Handler struct {

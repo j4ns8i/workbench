@@ -2,9 +2,10 @@ package xredis
 
 import (
 	"context"
-	"product-store/pkg/api"
 
 	"github.com/redis/go-redis/v9"
+
+	"product-store/pkg/api"
 )
 
 // ProductCategory is the Redis representation of a ProductCategory.
@@ -92,4 +93,3 @@ func HGetAllScan(ctx context.Context, client redis.HashCmdable, key string, dest
 	}
 	return true, nil
 }
-

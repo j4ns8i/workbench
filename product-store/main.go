@@ -2,9 +2,10 @@ package main
 
 import (
 	"os"
-	"product-store/pkg/xredis"
 
 	"github.com/rs/zerolog"
+
+	"product-store/pkg/xredis"
 )
 
 func main() {

@@ -2,9 +2,10 @@ package xredis
 
 import (
 	"context"
-	"product-store/pkg/api"
 
 	"github.com/redis/go-redis/v9"
+
+	"product-store/pkg/api"
 )
 
 type Tx redis.Tx
