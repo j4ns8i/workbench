@@ -8,12 +8,15 @@ import (
 	"github.com/rs/zerolog"
 
 	"product-store/pkg/api"
+	"product-store/pkg/store"
 )
 
 type Client struct {
 	redis.UniversalClient
 	Logger *zerolog.Logger
 }
+
+var _ store.Store = (*Client)(nil)
 
 type ClientOpts struct {
 	Host     string
@@ -39,7 +42,7 @@ func NewClient(opts ClientOpts) *Client {
 	}
 }
 
-func (c *Client) GetProductCategory(ctx context.Context, categoryName string) (ProductCategory, error) {
+func (c *Client) GetProductCategory(ctx context.Context, categoryName string) (api.ProductCategory, error) {
 	return getProductCategory(ctx, c, categoryName)
 }
 

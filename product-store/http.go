@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -141,7 +142,7 @@ func (h *Handler) PutProduct(c echo.Context) error {
 		var exists = true
 		obj, err := tx.GetProduct(ctx, product.Name)
 		if err != nil {
-			if err == xredis.ErrorNotFound {
+			if errors.Is(err, xredis.ErrNotFound) {
 				exists = false
 			} else {
 				return err
@@ -157,7 +158,7 @@ func (h *Handler) PutProduct(c echo.Context) error {
 	})
 
 	if err != nil {
-		if err == xredis.ErrorProductCategoryNotFound {
+		if errors.Is(err, xredis.ErrProductCategoryNotFound) {
 			return c.JSON(http.StatusNotFound, "Product category not found")
 		}
 		h.Logger.Err(err).Msg("Failed to execute transaction")

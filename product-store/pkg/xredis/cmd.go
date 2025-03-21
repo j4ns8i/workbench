@@ -42,7 +42,7 @@ func getProduct(ctx context.Context, c redis.HashCmdable, productName string) (a
 	}
 
 	if !found {
-		return p, ErrorNotFound
+		return p, ErrNotFound
 	}
 	return ToAPIProduct(obj)
 }
@@ -53,18 +53,21 @@ func putProductCategory(ctx context.Context, c redis.HashCmdable, pc api.Product
 	return c.HMSet(ctx, key, obj).Err()
 }
 
-func getProductCategory(ctx context.Context, c redis.HashCmdable, categoryName string) (ProductCategory, error) {
+func getProductCategory(ctx context.Context, c redis.HashCmdable, categoryName string) (api.ProductCategory, error) {
 	key := buildProductCategoryKey(categoryName)
 
-	var obj ProductCategory
+	var (
+		pc  api.ProductCategory
+		obj ProductCategory
+	)
 	found, err := HGetAllScan(ctx, c, key, &obj)
 	if err != nil {
-		return obj, err
+		return pc, err
 	}
 
 	if !found {
-		return obj, ErrorNotFound
+		return pc, ErrNotFound
 	}
 
-	return obj, nil
+	return ToAPIProductCategory(obj)
 }

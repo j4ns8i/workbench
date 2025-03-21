@@ -6,11 +6,14 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"product-store/pkg/api"
+	"product-store/pkg/store"
 )
 
 type Tx redis.Tx
 
-func (t *Tx) GetProductCategory(ctx context.Context, name string) (ProductCategory, error) {
+var _ store.Store = (*Tx)(nil)
+
+func (t *Tx) GetProductCategory(ctx context.Context, name string) (api.ProductCategory, error) {
 	return getProductCategory(ctx, t, name)
 }
 

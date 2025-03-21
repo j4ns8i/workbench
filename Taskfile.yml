@@ -66,3 +66,9 @@ tasks:
     cmds:
       - cd product-store && go tool gci write -s standard -s default -s localmodule --skip-generated .
       - cd product-store && gofmt -w .
+
+  lint-go:
+    desc: "Lint Go code"
+    cmds:
+      - cd product-store && go vet ./...
+      - cd product-store && go tool golangci-lint run -c ../.golangci.yml

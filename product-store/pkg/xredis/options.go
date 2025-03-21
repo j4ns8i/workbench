@@ -42,6 +42,6 @@ func withExists(key string, missingError error) TransactionOption {
 func WithProductCategoryExists(category string) TransactionOption {
 	return func(opts *TransactionOptions) {
 		key := buildProductCategoryKey(category)
-		withExists(key, ErrorProductCategoryNotFound)(opts)
+		withExists(key, ErrProductCategoryNotFound)(opts)
 	}
 }

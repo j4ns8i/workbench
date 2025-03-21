@@ -1,0 +1,19 @@
+linters:
+  enable:
+    - bodyclose
+    - contextcheck
+    - errname
+    - errorlint
+    - funlen
+    - gocritic
+    - gosec
+    - importas
+    - makezero
+    - misspell
+    - nolintlint
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - reassign
+    - testifylint
+    - zerologlint
