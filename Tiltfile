@@ -42,16 +42,6 @@ def build_product_store():
 
 build_product_store()
 
-### Deploy steps
-
-def apply_helm_chart():
-    chart = helm('deploy', name='workbench')
-    k8s_yaml(chart)
-    k8s_resource(workload='workbench-api', port_forwards=[8000])
-    k8s_resource(workload='workbench-product-store', port_forwards=[8080])
-
-apply_helm_chart()
-
 ### Redis
 
 def apply_redis_chart():
@@ -68,3 +58,13 @@ def apply_redis_chart():
     k8s_resource(workload='redis', port_forwards=[6379])
 
 apply_redis_chart()
+
+### Deploy steps
+
+def apply_helm_chart():
+    chart = helm('deploy', name='workbench')
+    k8s_yaml(chart)
+    k8s_resource(workload='workbench-api', port_forwards=[8000], resource_deps=['redis'])
+    k8s_resource(workload='workbench-product-store', port_forwards=[8080], resource_deps=['redis'])
+
+apply_helm_chart()
