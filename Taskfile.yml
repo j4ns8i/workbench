@@ -72,12 +72,11 @@ tasks:
       TEST_PATH: '{{ if eq .INTEGRATION "1" }}./pkg/test/internal/integration/...{{ else }}./...{{ end }}'
       TEST_FLAGS: '{{ if eq .INTEGRATION "1" -}} -tags=integration {{- end }}'
     env:
-      INTEGRATION: 0
       PS_TEST_REDIS_HOST: localhost
       PS_TEST_REDIS_PORT: 6379
       PS_TEST_REDIS_PASSWORD: *REDISCLI_AUTH
     cmds:
-      - go tool gotestsum --format pkgname -- {{ .TEST_FLAGS }} -count=1 {{.TEST_PATH}}
+      - go tool gotestsum --format pkgname -- {{ .TEST_FLAGS }} -count=1 {{ .TEST_PATH }}
 
   format-go:
     desc: "Format Go code"

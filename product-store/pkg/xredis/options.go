@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/redis/go-redis/v9"
+
+	"product-store/pkg/db"
 )
 
 // TransactionOption represents a configuration option for a Redis transaction
@@ -42,6 +44,6 @@ func withExists(key string, missingError error) TransactionOption {
 func WithProductCategoryExists(category string) TransactionOption {
 	return func(opts *TransactionOptions) {
 		key := buildProductCategoryKey(category)
-		withExists(key, ErrProductCategoryNotFound)(opts)
+		withExists(key, db.ErrProductCategoryNotFound)(opts)
 	}
 }

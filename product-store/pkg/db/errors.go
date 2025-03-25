@@ -1,8 +1,8 @@
-package xredis
+package db
 
 import "errors"
 
 var (
 	ErrProductCategoryNotFound = errors.New("product category not found")
-	ErrNotFound                = errors.New("not found")
+	ErrProductNotFound         = errors.New("product not found")
 )

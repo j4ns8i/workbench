@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"product-store/pkg/store"
+	"product-store/pkg/db"
 	"product-store/pkg/types"
 )
 
@@ -17,7 +17,7 @@ type Client struct {
 	Logger *zerolog.Logger
 }
 
-var _ store.Store = (*Client)(nil)
+var _ db.DB = (*Client)(nil)
 
 type ClientOpts struct {
 	Host     string
@@ -29,11 +29,11 @@ type ClientOpts struct {
 // NewClient creates a new xredis Client with the provided connection parameters
 func NewClient(opts ClientOpts) *Client {
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", opts.Host, opts.Port),
-		Password: opts.Password,
-		DB:       0,
-		Protocol: 3,
-		MaxRetries: 10,
+		Addr:        fmt.Sprintf("%s:%s", opts.Host, opts.Port),
+		Password:    opts.Password,
+		DB:          0,
+		Protocol:    3,
+		MaxRetries:  10,
 		DialTimeout: 1 * time.Second,
 	})
 
@@ -49,7 +49,7 @@ func (c *Client) GetProductCategory(ctx context.Context, categoryName string) (t
 	return getProductCategory(ctx, c, categoryName)
 }
 
-func (c *Client) PutProductCategory(ctx context.Context, pc types.ProductCategory) error {
+func (c *Client) PutProductCategory(ctx context.Context, pc types.ProductCategory) (types.ProductCategory, error) {
 	return putProductCategory(ctx, c, pc)
 }
 
@@ -57,6 +57,6 @@ func (c *Client) GetProduct(ctx context.Context, productName string) (types.Prod
 	return getProduct(ctx, c, productName)
 }
 
-func (c *Client) PutProduct(ctx context.Context, p types.Product) error {
+func (c *Client) PutProduct(ctx context.Context, p types.Product) (types.Product, error) {
 	return putProduct(ctx, c, p)
 }

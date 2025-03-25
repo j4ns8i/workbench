@@ -8,12 +8,12 @@ import (
 
 // Transaction represents a Redis transaction with middleware capabilities
 type Transaction struct {
-	client *Client
+	client redis.UniversalClient
 	opts   *TransactionOptions
 }
 
 // NewTransaction creates a new Transaction with the given Redis client
-func NewTransaction(client *Client) *Transaction {
+func NewTransaction(client redis.UniversalClient) *Transaction {
 	return &Transaction{
 		client: client,
 		opts:   &TransactionOptions{},

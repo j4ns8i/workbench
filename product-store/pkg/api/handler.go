@@ -4,12 +4,13 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 
+	"product-store/pkg/db"
 	"product-store/pkg/xredis"
 )
 
 type Handler struct {
 	Echo   *echo.Echo
-	Redis  *xredis.Client
+	DB     db.DB
 	Logger *zerolog.Logger
 }
 
@@ -18,7 +19,7 @@ func NewHandler(logger *zerolog.Logger, redisClient *xredis.Client) *Handler {
 
 	h := &Handler{
 		Echo:   e,
-		Redis:  &xredis.Client{UniversalClient: redisClient},
+		DB:     &xredis.Client{UniversalClient: redisClient},
 		Logger: logger,
 	}
 	e.GET("/healthz", h.Healthz)
