@@ -34,8 +34,7 @@ func (h *Handler) PutProductCategory(e echo.Context) error {
 	return e.JSON(http.StatusOK, pc)
 }
 
-func (h *Handler) GetProductCategory(e echo.Context) error {
-	name := e.Param("productCategoryName")
+func (h *Handler) GetProductCategory(e echo.Context, name string) error {
 	logger := h.Logger.With().Str("product_category_name", name).Logger()
 	pc, err := h.DB.GetProductCategory(e.Request().Context(), name)
 	if err != nil {
@@ -69,8 +68,7 @@ func (h *Handler) PutProduct(c echo.Context) error {
 	return c.JSON(http.StatusOK, p)
 }
 
-func (h *Handler) GetProduct(e echo.Context) error {
-	name := e.Param("productName")
+func (h *Handler) GetProduct(e echo.Context, name string) error {
 	logger := h.Logger.With().Str("product_name", name).Logger()
 	product, err := h.DB.GetProduct(e.Request().Context(), name)
 	if err != nil {

@@ -1,6 +1,17 @@
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 load('ext://restart_process', 'docker_build_with_restart')
 
+### Codegen
+
+def codegen_product_store():
+    local_resource(
+        name='codegen (product store)',
+        cmd='task generate-go',
+        deps=['product-store/openapi/'],
+    )
+
+codegen_product_store()
+
 ### Build steps
 
 def build_api():
@@ -22,7 +33,7 @@ def build_product_store():
         name='bin.' + name,
         cmd='CGO_ENABLED=0 GOOS=linux go build -o ./bin/' + name,
         deps=[name],
-        ignore=[name + '/bin/*'],
+        ignore=[name + '/{}/*'.format(ignored_dir) for ignored_dir in ['bin', 'openapi']],
         dir=name,
     )
 

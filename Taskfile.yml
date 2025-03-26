@@ -97,3 +97,4 @@ tasks:
     dir: product-store
     cmds:
       - go tool oapi-codegen -config openapi/types.config.yaml openapi/types.spec.yaml
+      - go tool oapi-codegen -config openapi/api.config.yaml openapi/api.spec.yaml

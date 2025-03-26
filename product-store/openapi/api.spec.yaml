@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Product Store API
+  version: 1.0.0
+  description: API for managing products
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /healthz:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      operationId: healthz
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "OK"
+        '500':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Redis connection error"
+  /product-categories:
+    put:
+      summary: Create or update a product category
+      description: Creates a new product category or updates an existing one
+      operationId: putProductCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './types.spec.yaml#/components/schemas/ProductCategory'
+      responses:
+        '200':
+          description: Product category successfully created or updated
+          content:
+            application/json:
+              schema:
+                $ref: './types.spec.yaml#/components/schemas/ProductCategory'
+        '400':
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Invalid request payload"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unexpected error occurred"
+  /product-categories/{productCategoryName}:
+    get:
+      summary: Get a product category by name
+      description: Returns a specific product category by its name
+      operationId: getProductCategory
+      parameters:
+        - name: productCategoryName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The name of the product category to retrieve
+      responses:
+        '200':
+          description: Product category found
+          content:
+            application/json:
+              schema:
+                $ref: './types.spec.yaml#/components/schemas/ProductCategory'
+        '404':
+          description: Product category not found
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "product category not found"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unexpected error occurred"
+  /products:
+    put:
+      summary: Create or update a product
+      description: Creates a new product or updates an existing one
+      operationId: putProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './types.spec.yaml#/components/schemas/Product'
+      responses:
+        '200':
+          description: Product successfully created or updated
+          content:
+            application/json:
+              schema:
+                $ref: './types.spec.yaml#/components/schemas/Product'
+        '400':
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Referenced product category not found
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "product category not found"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "unexpected error occurred"
+  /products/{productName}:
+    get:
+      summary: Get a product by name
+      description: Returns a specific product by its name
+      operationId: getProduct
+      parameters:
+        - name: productName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The name of the product to retrieve
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: './types.spec.yaml#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "product not found"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Unexpected error occurred"

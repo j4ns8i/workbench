@@ -1,9 +1,12 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/refs/heads/main/configuration-schema.json
 
-package: types
-output: pkg/types/gen.go
+package: api
+output: pkg/api/gen.go
 generate:
   models: true
+  echo-server: true
   embedded-spec: true
 output-options:
   skip-prune: true
+import-mapping:
+  ./types.spec.yaml: "product-store/pkg/types"

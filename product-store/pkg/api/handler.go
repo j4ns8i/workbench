@@ -14,6 +14,8 @@ type Handler struct {
 	Logger *zerolog.Logger
 }
 
+var _ ServerInterface = (*Handler)(nil)
+
 func NewHandler(logger *zerolog.Logger, redisClient *xredis.Client) *Handler {
 	e := echo.New()
 
@@ -22,11 +24,8 @@ func NewHandler(logger *zerolog.Logger, redisClient *xredis.Client) *Handler {
 		DB:     &xredis.Client{UniversalClient: redisClient},
 		Logger: logger,
 	}
-	e.GET("/healthz", h.Healthz)
-	e.PUT("/product-categories", h.PutProductCategory)
-	e.GET("/product-categories/:productCategoryName", h.GetProductCategory)
-	e.PUT("/products", h.PutProduct)
-	e.GET("/products/:productName", h.GetProduct)
+
+	RegisterHandlers(e, h)
 
 	return h
 }
