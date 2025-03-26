@@ -68,3 +68,22 @@ def apply_helm_chart():
     k8s_resource(workload='workbench-product-store', port_forwards=[8080], resource_deps=['redis'])
 
 apply_helm_chart()
+
+### Tests
+
+def unit_tests():
+    local_resource(
+        name='unit tests',
+        cmd='task test-product-store',
+    )
+
+unit_tests()
+
+def integration_tests():
+    local_resource(
+        name='integration tests',
+        cmd='INTEGRATION=1 task test-product-store',
+        resource_deps=['workbench-product-store'],
+    )
+
+integration_tests()
