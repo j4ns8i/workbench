@@ -91,3 +91,9 @@ tasks:
     cmds:
       - go vet ./...
       - go tool golangci-lint run -c ../.golangci.yml
+
+  generate-go:
+    desc: "Generate Go code"
+    dir: product-store
+    cmds:
+      - go tool oapi-codegen -config openapi/types.config.yaml openapi/types.spec.yaml

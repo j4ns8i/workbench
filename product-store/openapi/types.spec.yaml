@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: Product Store Types
+  version: 1.0.0
+  description: Type definitions for Product Store API
+components:
+  schemas:
+    ProductCategory:
+      type: object
+      properties:
+        ID:
+          type: string
+          format: ulid
+          description: The unique identifier for the product category
+        Name:
+          type: string
+          description: The name of the product category
+      required:
+        - Name
+    Product:
+      type: object
+      properties:
+        ID:
+          type: string
+          format: ulid
+          description: The unique identifier for the product
+        Name:
+          type: string
+          description: The name of the product
+        Category:
+          type: string
+          description: The name of the product category
+        Price:
+          type: number
+          format: float
+          description: The price of the product
+      required:
+        - Name
+        - Category
+        - Price

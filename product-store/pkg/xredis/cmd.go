@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"product-store/pkg/db"
+	"product-store/pkg/ptr"
 	"product-store/pkg/types"
 )
 
@@ -42,7 +43,7 @@ func putProduct(ctx context.Context, c redis.UniversalClient, p types.Product) (
 			}
 		}
 		if !exists {
-			p.ID = ulid.Make()
+			p.ID = ptr.To(ulid.Make().String())
 		} else {
 			p.ID = existingObj.ID
 		}
@@ -71,7 +72,7 @@ func getProduct(ctx context.Context, c redis.HashCmdable, name string) (types.Pr
 	if !exists {
 		return types.Product{}, db.ErrProductNotFound
 	}
-	return ToAPIProduct(obj)
+	return ToAPIProduct(obj), nil
 }
 
 func putProductCategory(ctx context.Context, c redis.HashCmdable, pc types.ProductCategory) (types.ProductCategory, error) {
@@ -85,14 +86,9 @@ func putProductCategory(ctx context.Context, c redis.HashCmdable, pc types.Produ
 	}
 	if !exists {
 		// not found, create a new ID
-		pc.ID = ulid.Make()
+		pc.ID = ptr.To(ulid.Make().String())
 	} else {
-		// Use existing ID
-		u, err := types.NewULIDFromString(existing.ID)
-		if err != nil {
-			return types.ProductCategory{}, err
-		}
-		pc.ID = u
+		pc.ID = &existing.ID
 	}
 
 	obj := FromAPIProductCategory(pc)
@@ -112,5 +108,5 @@ func getProductCategory(ctx context.Context, c redis.HashCmdable, name string) (
 	if !exists {
 		return types.ProductCategory{}, db.ErrProductCategoryNotFound
 	}
-	return ToAPIProductCategory(obj)
+	return ToAPIProductCategory(obj), nil
 }

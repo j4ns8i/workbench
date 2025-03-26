@@ -113,9 +113,7 @@ func (s *TestAPISuite) TestProductCategoryCRUD() {
 	// Test data
 	categoryName := "Electronics"
 	category := types.ProductCategory{
-		ProductCategoryData: types.ProductCategoryData{
-			Name: categoryName,
-		},
+		Name: categoryName,
 	}
 
 	// Create product category
@@ -164,9 +162,7 @@ func (s *TestAPISuite) TestProductCRUD() {
 	// First create a product category
 	categoryName := "Electronics"
 	category := types.ProductCategory{
-		ProductCategoryData: types.ProductCategoryData{
-			Name: categoryName,
-		},
+		Name: categoryName,
 	}
 
 	jsonData, err := json.Marshal(category)
@@ -184,11 +180,9 @@ func (s *TestAPISuite) TestProductCRUD() {
 	// Create product
 	productName := "Laptop"
 	product := types.Product{
-		ProductData: types.ProductData{
-			Name:     productName,
-			Category: categoryName,
-			Price:    999.99,
-		},
+		Name:     productName,
+		Category: categoryName,
+		Price:    999.99,
 	}
 
 	jsonData, err = json.Marshal(product)
@@ -238,11 +232,9 @@ func (s *TestAPISuite) TestProductCRUD() {
 // TestProductWithNonExistentCategory tests creating a product with non-existent category
 func (s *TestAPISuite) TestProductWithNonExistentCategory() {
 	product := types.Product{
-		ProductData: types.ProductData{
-			Name:     "Invalid Product",
-			Category: "NonExistentCategory",
-			Price:    10.99,
-		},
+		Name:     "Invalid Product",
+		Category: "NonExistentCategory",
+		Price:    10.99,
 	}
 
 	jsonData, err := json.Marshal(product)
@@ -263,9 +255,7 @@ func (s *TestAPISuite) TestProductWithNonExistentCategory() {
 func (s *TestAPISuite) TestIdempotentCategoryCreation() {
 	categoryName := "Furniture"
 	category := types.ProductCategory{
-		ProductCategoryData: types.ProductCategoryData{
-			Name: categoryName,
-		},
+		Name: categoryName,
 	}
 
 	// First creation
@@ -307,9 +297,7 @@ func (s *TestAPISuite) TestIdempotentProductCreation() {
 	// Create category first
 	categoryName := "Books"
 	category := types.ProductCategory{
-		ProductCategoryData: types.ProductCategoryData{
-			Name: categoryName,
-		},
+		Name: categoryName,
 	}
 
 	jsonData, err := json.Marshal(category)
@@ -326,11 +314,9 @@ func (s *TestAPISuite) TestIdempotentProductCreation() {
 	// Create product
 	productName := "Programming Book"
 	product := types.Product{
-		ProductData: types.ProductData{
-			Name:     productName,
-			Category: categoryName,
-			Price:    29.99,
-		},
+		Name:     productName,
+		Category: categoryName,
+		Price:    29.99,
 	}
 
 	jsonData, err = json.Marshal(product)
