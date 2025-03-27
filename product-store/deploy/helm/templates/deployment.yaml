@@ -1,34 +1,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "workbench.productStoreName" . }}
+  name: {{ include "product-store.fullname" . }}
   labels:
-    {{- include "workbench.productStoreLabels" . | nindent 4 }}
+    {{- include "product-store.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.productStore.replicaCount }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "workbench.productStoreSelectorLabels" . | nindent 6 }}
+      {{- include "product-store.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "workbench.productStoreLabels" . | nindent 8 }}
+        {{- include "product-store.labels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "workbench.serviceAccountName" . }}
+      serviceAccountName: {{ include "product-store.serviceAccountName" . }}
       containers:
         - name: "product-store"
           image: "workbench/product-store:latest"
           imagePullPolicy: Always
           env:
             - name: REDIS_HOST
-              value: {{ include "workbench.redisHost" . | quote }}
+              value: {{ include "product-store.redisHost" . | quote }}
             - name: REDIS_PORT
-              value: {{ include "workbench.redisPort" . | quote }}
+              value: {{ include "product-store.redisPort" . | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "workbench.redisSecretName" . }}
-                  key: {{ include "workbench.redisSecretPasswordKey" . }}
+                  name: {{ include "product-store.redisSecretName" . }}
+                  key: {{ include "product-store.redisSecretPasswordKey" . }}
           ports:
             - name: http
               containerPort: 8080

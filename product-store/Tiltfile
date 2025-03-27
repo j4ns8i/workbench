@@ -1,0 +1,62 @@
+load('ext://restart_process', 'docker_build_with_restart')
+
+name = 'product-store'
+
+def prefixed(name):
+    return "ps: " + name
+
+def codegen():
+    local_resource(
+        name=prefixed('codegen'),
+        cmd='task generate-go',
+        deps=['product-store/openapi/'],
+    )
+
+def docker_build():
+    local_resource(
+        name=prefixed('bin.' + name),
+        cmd='CGO_ENABLED=0 GOOS=linux go build -o ./bin/' + name,
+        deps=['./'],
+        ignore=['bin', 'openapi'],
+    )
+
+    entrypoint = '/usr/local/bin/' + name
+    docker_build_with_restart(
+        ref='workbench/' + name,
+        context='.',
+        entrypoint=[entrypoint],
+        dockerfile='build/tilt.Dockerfile',
+        only=[
+            './bin',
+        ],
+        live_update=[
+            sync('./{n}/bin/{n}'.format(n=name), entrypoint),
+        ],
+    )
+
+def unit_test():
+    local_resource(
+        name=prefixed('unit tests'),
+        cmd='task test-product-store',
+    )
+
+def integration_tests():
+    local_resource(
+        name=prefixed('integration tests'),
+        cmd='INTEGRATION=1 task test-product-store',
+        resource_deps=['workbench-product-store'],
+    )
+
+def helm_install():
+    chart = helm('deploy/helm', name='product-store')
+    k8s_yaml(chart)
+    k8s_resource(workload=name, port_forwards=[8080], resource_deps=['redis'], new_name=prefixed(name))
+
+def main():
+    codegen()
+    docker_build()
+    unit_test()
+    integration_tests()
+    helm_install()
+
+main()

@@ -1,0 +1,28 @@
+load('ext://restart_process', 'docker_build_with_restart')
+
+name = 'api'
+
+def prefixed(name):
+    return "api: " + name
+
+def docker_build():
+    docker_build_with_restart(
+        ref='workbench/api',
+        context='./',
+        entrypoint='fastapi run src/app.py',
+        dockerfile='build/Dockerfile',
+        live_update=[
+            sync('./src', '/app/src'),
+        ],
+    )
+
+def helm_install():
+    chart = helm('deploy/helm', name=name)
+    k8s_yaml(chart)
+    k8s_resource(workload=name, port_forwards=[8000], resource_deps=['redis'], new_name=prefixed(name))
+
+def main():
+    docker_build()
+    helm_install()
+
+main()

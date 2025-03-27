@@ -1,7 +1,0 @@
-architecture: standalone
-
-tls:
-  authClients: false
-
-master:
-  disableCommands: []

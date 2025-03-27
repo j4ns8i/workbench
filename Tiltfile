@@ -1,66 +1,14 @@
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
-load('ext://restart_process', 'docker_build_with_restart')
-
-### Codegen
-
-def codegen_product_store():
-    local_resource(
-        name='codegen (product store)',
-        cmd='task generate-go',
-        deps=['product-store/openapi/'],
-    )
-
-codegen_product_store()
-
-### Build steps
-
-def build_api():
-    docker_build_with_restart(
-        ref='workbench/api',
-        context='./api',
-        entrypoint='fastapi run src/app.py',
-        dockerfile='api/build/Dockerfile',
-        live_update=[
-            sync('./api/src', '/app/src'),
-        ],
-    )
-
-build_api()
-
-def build_product_store():
-    name = 'product-store'
-    local_resource(
-        name='bin.' + name,
-        cmd='CGO_ENABLED=0 GOOS=linux go build -o ./bin/' + name,
-        deps=[name],
-        ignore=[name + '/{}/*'.format(ignored_dir) for ignored_dir in ['bin', 'openapi']],
-        dir=name,
-    )
-
-    entrypoint = '/usr/local/bin/' + name
-    docker_build_with_restart(
-        ref='workbench/' + name,
-        context=name,
-        entrypoint=[entrypoint],
-        dockerfile='{}/build/tilt.Dockerfile'.format(name),
-        only=[
-            './bin',
-        ],
-        live_update=[
-            sync('./{n}/bin/{n}'.format(n=name), entrypoint),
-        ],
-    )
-
-build_product_store()
 
 ### Redis
-
 def apply_redis_chart():
     helm_repo('bitnami', 'https://charts.bitnami.com/bitnami')
     helm_resource('redis', 'bitnami/redis',
         namespace='default',
         flags=[
-            '--values=./deploy/redis-values.yaml',
+            '--set=architecture=standalone',
+            '--set=tls.authClients=false',
+            '--set-json=master.disableCommands=[]',
             '--version=20.10.1',
         ],
         resource_deps=['bitnami'],
@@ -70,31 +18,5 @@ def apply_redis_chart():
 
 apply_redis_chart()
 
-### Deploy steps
-
-def apply_helm_chart():
-    chart = helm('deploy', name='workbench')
-    k8s_yaml(chart)
-    k8s_resource(workload='workbench-api', port_forwards=[8000], resource_deps=['redis'])
-    k8s_resource(workload='workbench-product-store', port_forwards=[8080], resource_deps=['redis'])
-
-apply_helm_chart()
-
-### Tests
-
-def unit_tests():
-    local_resource(
-        name='unit tests',
-        cmd='task test-product-store',
-    )
-
-unit_tests()
-
-def integration_tests():
-    local_resource(
-        name='integration tests',
-        cmd='INTEGRATION=1 task test-product-store',
-        resource_deps=['workbench-product-store'],
-    )
-
-integration_tests()
+### Component loading
+load_dynamic('./product-store/Tiltfile')

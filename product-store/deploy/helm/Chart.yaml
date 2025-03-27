@@ -1,6 +1,6 @@
 apiVersion: v2
-name: workbench
-description: A toy application set.
+name: product-store
+description: A toy go api server.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
