@@ -5,7 +5,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"product-store/pkg/db"
-	"product-store/pkg/xredis"
 )
 
 type Handler struct {
@@ -16,12 +15,12 @@ type Handler struct {
 
 var _ ServerInterface = (*Handler)(nil)
 
-func NewHandler(logger *zerolog.Logger, redisClient *xredis.Client) *Handler {
+func NewHandler(logger *zerolog.Logger, database db.DB) *Handler {
 	e := echo.New()
 
 	h := &Handler{
 		Echo:   e,
-		DB:     &xredis.Client{UniversalClient: redisClient},
+		DB:     database,
 		Logger: logger,
 	}
 

@@ -19,6 +19,14 @@ type Client struct {
 
 var _ db.DB = (*Client)(nil)
 
+func NewDB(client redis.UniversalClient, logger *zerolog.Logger) *Client {
+	c := Client{
+		UniversalClient: client,
+		Logger:          logger,
+	}
+	return &c
+}
+
 type ClientOpts struct {
 	Host     string
 	Port     string
@@ -59,4 +67,9 @@ func (c *Client) GetProduct(ctx context.Context, productName string) (types.Prod
 
 func (c *Client) PutProduct(ctx context.Context, p types.Product) (types.Product, error) {
 	return putProduct(ctx, c, p)
+}
+
+func (c *Client) CheckHealth(ctx context.Context) error {
+	err := c.Ping(ctx).Err()
+	return err
 }

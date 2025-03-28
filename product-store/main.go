@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
 	"product-store/pkg/api"
@@ -17,18 +20,12 @@ func main() {
 
 	logger := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
-	opts := xredis.ClientOpts{
-		Host:     redisHost,
-		Port:     redisPort,
-		Password: redisPassword,
-		Logger:   &logger,
-	}
-
 	// Set up Redis client using xredis package
-	redisClient := xredis.NewClient(opts)
+	redisClient := newRedisClient(redisHost, redisPort, redisPassword)
+	db := xredis.NewDB(redisClient, &logger)
 
 	// Create new handler with Redis client
-	handler := api.NewHandler(&logger, redisClient)
+	handler := api.NewHandler(&logger, db)
 
 	// Start server
 	handler.ListenAndServe()
@@ -43,4 +40,15 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func newRedisClient(host, port, password string) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr:        fmt.Sprintf("%s:%s", host, port),
+		Password:    password,
+		DB:          0,
+		Protocol:    3,
+		MaxRetries:  10,
+		DialTimeout: 1 * time.Second,
+	})
 }
