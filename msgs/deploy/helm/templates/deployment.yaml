@@ -1,34 +1,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "api.fullname" . }}
+  name: {{ include "msgs.fullname" . }}
   labels:
-    {{- include "api.labels" . | nindent 4 }}
+    {{- include "msgs.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "api.selectorLabels" . | nindent 6 }}
+      {{- include "msgs.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "api.labels" . | nindent 8 }}
+        {{- include "msgs.labels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "api.serviceAccountName" . }}
+      serviceAccountName: {{ include "msgs.serviceAccountName" . }}
       containers:
-        - name: "api"
-          image: "workbench/api:latest"
+        - name: "msgs"
+          image: "workbench/msgs:latest"
           imagePullPolicy: Always
           env:
             - name: REDIS_HOST
-              value: {{ include "api.redisHost" . | quote }}
+              value: {{ include "msgs.redisHost" . | quote }}
             - name: REDIS_PORT
-              value: {{ include "api.redisPort" . | quote }}
+              value: {{ include "msgs.redisPort" . | quote }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "api.redisSecretName" . }}
-                  key: {{ include "api.redisSecretPasswordKey" . }}
+                  name: {{ include "msgs.redisSecretName" . }}
+                  key: {{ include "msgs.redisSecretPasswordKey" . }}
           ports:
             - name: http
               containerPort: 8000

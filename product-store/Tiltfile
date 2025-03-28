@@ -8,7 +8,7 @@ def prefixed(name):
 def codegen():
     local_resource(
         name=prefixed('codegen'),
-        cmd='task generate-go',
+        cmd='task ps-generate',
         deps=['product-store/openapi/'],
     )
 
@@ -37,13 +37,13 @@ def docker_build():
 def unit_test():
     local_resource(
         name=prefixed('unit tests'),
-        cmd='task test-product-store',
+        cmd='task ps-test',
     )
 
 def integration_tests():
     local_resource(
         name=prefixed('integration tests'),
-        cmd='INTEGRATION=1 task test-product-store',
+        cmd='task ps-test-integration',
         resource_deps=['workbench-product-store'],
     )
 

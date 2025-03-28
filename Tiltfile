@@ -20,3 +20,4 @@ apply_redis_chart()
 
 ### Component loading
 load_dynamic('./product-store/Tiltfile')
+load_dynamic('./msgs/Tiltfile')

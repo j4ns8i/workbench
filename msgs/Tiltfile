@@ -1,13 +1,13 @@
 load('ext://restart_process', 'docker_build_with_restart')
 
-name = 'api'
+name = 'msgs'
 
 def prefixed(name):
-    return "api: " + name
+    return "msgs: " + name
 
 def docker_build():
     docker_build_with_restart(
-        ref='workbench/api',
+        ref='workbench/msgs',
         context='./',
         entrypoint='fastapi run src/app.py',
         dockerfile='build/Dockerfile',

@@ -1,5 +1,5 @@
 apiVersion: v2
-name: api
+name: msgs
 description: A toy fastapi application.
 
 # A chart can be either an 'application' or a 'library' chart.
