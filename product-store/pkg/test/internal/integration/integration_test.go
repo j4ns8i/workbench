@@ -2,12 +2,10 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"product-store/pkg/api"
+	"product-store/pkg/client"
 	"product-store/pkg/types"
 	"product-store/pkg/xredis"
 )
@@ -25,10 +24,12 @@ const epsilon = 0.0000001
 // TestAPISuite is a test suite for API integration tests
 type TestAPISuite struct {
 	suite.Suite
-	handler *api.Handler
-	client  *http.Client
-	server  *httptest.Server
-	redis   *redis.Client
+	server      *httptest.Server
+	redisClient *redis.Client
+	psClient    client.ClientWithResponsesInterface
+
+	// test-specific variables
+	id string
 }
 
 var (
@@ -44,31 +45,40 @@ func (s *TestAPISuite) SetupSuite() {
 	}
 
 	// Setup Redis client
-	s.redis = redis.NewClient(&redis.Options{
+	s.redisClient = redis.NewClient(&redis.Options{
 		Addr:        fmt.Sprintf("%s:%s", PS_TEST_REDIS_HOST, PS_TEST_REDIS_PORT),
 		Password:    PS_TEST_REDIS_PASSWORD,
-		DB:          1,
+		DB:          1, // Use a different DB for testing
 		Protocol:    3,
 		MaxRetries:  10,
 		DialTimeout: 1 * time.Second,
 	})
 
 	// Ping Redis to ensure it's available
-	_, err := s.redis.Ping(context.Background()).Result()
+	_, err := s.redisClient.Ping(context.Background()).Result()
 	s.Require().NoError(err, "Redis must be available for integration tests")
 
 	// Create logger
 	logger := log.Logger
 
 	// Create handler
-	redisClient := &xredis.Client{UniversalClient: s.redis}
-	s.handler = api.NewHandler(&logger, redisClient)
+	rdb := xredis.NewDB(s.redisClient, &logger)
+	handler := api.NewHandler(&logger, rdb)
 
 	// Create test server
-	s.server = httptest.NewServer(s.handler.Echo)
-	s.client = &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	s.server = httptest.NewServer(handler.Echo)
+
+	s.psClient, err = client.NewClientWithResponses(s.server.URL)
+	s.Require().NoError(err)
+}
+
+func (s *TestAPISuite) SetupTest() {
+	s.id = types.NewULID().String()
+}
+
+// withID returns token with a ULID suffix to ensure uniqueness across tests.
+func (s *TestAPISuite) withID(token string) string {
+	return fmt.Sprintf("%s-%s", token, s.id)
 }
 
 // TearDownSuite closes resources after all tests
@@ -76,279 +86,183 @@ func (s *TestAPISuite) TearDownSuite() {
 	// Close test server
 	s.server.Close()
 
+	err := s.redisClient.FlushDB(s.T().Context()).Err()
+	s.NoError(err)
+
 	// Close Redis client
-	err := s.redis.Close()
+	err = s.redisClient.Close()
 	s.Require().NoError(err, "Failed to close Redis client")
-}
-
-// TearDownTest cleans up after each test
-func (s *TestAPISuite) TearDownTest() {
-	// Clear test data from Redis
-	keys, err := s.redis.Keys(context.Background(), "*").Result()
-	s.Require().NoError(err, "Failed to get Redis keys")
-
-	if len(keys) > 0 {
-		_, err = s.redis.Del(context.Background(), keys...).Result()
-		s.Require().NoError(err, "Failed to clear Redis test data")
-	}
 }
 
 // TestHealthz tests the healthz endpoint
 func (s *TestAPISuite) TestHealthz() {
-	resp, err := s.client.Get(s.server.URL + "/healthz")
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-
-	// Verify response
-	s.Equal(http.StatusOK, resp.StatusCode)
-
-	var responseBody string
-	err = json.NewDecoder(resp.Body).Decode(&responseBody)
-	s.Require().NoError(err, "Failed to decode response")
-	s.Equal("OK", responseBody)
+	ctx := s.T().Context()
+	resp, err := s.psClient.HealthzWithResponse(ctx)
+	s.Require().NoError(err)
+	s.Equal(http.StatusOK, resp.StatusCode())
+	s.Require().NotNil(resp.JSON200)
+	s.Equal("OK", *resp.JSON200)
 }
 
 // TestProductCategoryCRUD tests creating and retrieving a product category
 func (s *TestAPISuite) TestProductCategoryCRUD() {
-	// Test data
-	categoryName := "Electronics"
+	ctx := s.T().Context()
 	category := types.ProductCategory{
-		Name: categoryName,
+		Name: s.withID("Electronics"),
 	}
+	putPCResponse, err := s.psClient.PutProductCategoryWithResponse(ctx, category)
 
-	// Create product category
-	jsonData, err := json.Marshal(category)
-	s.Require().NoError(err, "Failed to marshal product category")
+	// Test that creating the product category works.
+	s.Require().NoError(err)
+	s.Equal(http.StatusOK, putPCResponse.StatusCode())
+	s.Require().NotNil(putPCResponse.JSON200)
+	createdPC := *putPCResponse.JSON200
+	s.Equal(category.Name, createdPC.Name)
+	s.NotEmpty(createdPC.ID)
 
-	req, err := http.NewRequest(http.MethodPut, s.server.URL+"/product-categories", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err, "Failed to create request")
-	req.Header.Set("Content-Type", "application/json")
+	// Test that getting the product category returns the same object we got
+	// when creating the category.
+	getPCResponse, err := s.psClient.GetProductCategoryWithResponse(ctx, category.Name)
+	s.Require().NoError(err)
+	s.Equal(http.StatusOK, getPCResponse.StatusCode())
+	s.Require().NotNil(getPCResponse.JSON200)
 
-	resp, err := s.client.Do(req)
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
+	gotProductCategory := *getPCResponse.JSON200
+	s.Equal(createdPC.ID, gotProductCategory.ID)
+	s.Equal(createdPC.Name, gotProductCategory.Name)
 
-	s.Equal(http.StatusOK, resp.StatusCode)
-
-	var createdCategory types.ProductCategory
-	err = json.NewDecoder(resp.Body).Decode(&createdCategory)
-	s.Require().NoError(err, "Failed to decode response")
-	s.Equal(categoryName, createdCategory.Name)
-	s.NotEmpty(createdCategory.ID, "ID should not be empty")
-
-	// Get product category
-	resp, err = s.client.Get(fmt.Sprintf("%s/product-categories/%s", s.server.URL, categoryName))
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-
-	s.Equal(http.StatusOK, resp.StatusCode)
-
-	var retrievedCategory types.ProductCategory
-	err = json.NewDecoder(resp.Body).Decode(&retrievedCategory)
-	s.Require().NoError(err, "Failed to decode response")
-	s.Equal(createdCategory.ID, retrievedCategory.ID)
-	s.Equal(categoryName, retrievedCategory.Name)
-
-	// Test retrieving non-existent category
-	resp, err = s.client.Get(fmt.Sprintf("%s/product-categories/nonexistent", s.server.URL))
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-
-	s.Equal(http.StatusNotFound, resp.StatusCode)
+	// Test retrieving non-existent category.
+	notFoundPCResponse, err := s.psClient.GetProductCategoryWithResponse(ctx, "not-found")
+	s.Require().NoError(err)
+	s.Equal(http.StatusNotFound, notFoundPCResponse.StatusCode())
 }
 
 // TestProductCRUD tests creating and retrieving a product
 func (s *TestAPISuite) TestProductCRUD() {
+	ctx := s.T().Context()
+
 	// First create a product category
-	categoryName := "Electronics"
 	category := types.ProductCategory{
-		Name: categoryName,
+		Name: s.withID("Electronics"),
 	}
 
-	jsonData, err := json.Marshal(category)
-	s.Require().NoError(err, "Failed to marshal product category")
-
-	req, err := http.NewRequest(http.MethodPut, s.server.URL+"/product-categories", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err, "Failed to create request")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-	s.Equal(http.StatusOK, resp.StatusCode)
+	putPCResponse, err := s.psClient.PutProductCategoryWithResponse(ctx, category)
+	s.Require().NoError(err)
+	s.Equal(http.StatusOK, putPCResponse.StatusCode())
 
 	// Create product
-	productName := "Laptop"
 	product := types.Product{
-		Name:     productName,
-		Category: categoryName,
+		Name:     s.withID("Laptop"),
+		Category: category.Name,
 		Price:    999.99,
 	}
 
-	jsonData, err = json.Marshal(product)
-	s.Require().NoError(err, "Failed to marshal product")
+	putProductResponse, err := s.psClient.PutProductWithResponse(ctx, product)
+	s.Require().NoError(err)
+	s.Equal(http.StatusOK, putProductResponse.StatusCode())
+	s.Require().NotNil(putProductResponse.JSON200)
 
-	req, err = http.NewRequest(http.MethodPut, s.server.URL+"/products", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err, "Failed to create request")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err = s.client.Do(req)
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-
-	s.Equal(http.StatusOK, resp.StatusCode)
-
-	var createdProduct types.Product
-	err = json.NewDecoder(resp.Body).Decode(&createdProduct)
-	s.Require().NoError(err, "Failed to decode response")
-	s.Equal(productName, createdProduct.Name)
-	s.Equal(categoryName, createdProduct.Category)
+	createdProduct := *putProductResponse.JSON200
+	s.Equal(product.Name, createdProduct.Name)
+	s.Equal(category.Name, createdProduct.Category)
 	s.InEpsilon(999.99, createdProduct.Price, epsilon)
-	s.NotEmpty(createdProduct.ID, "ID should not be empty")
+	s.NotEmpty(createdProduct.ID)
 
 	// Get product
-	resp, err = s.client.Get(fmt.Sprintf("%s/products/%s", s.server.URL, productName))
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
+	getProductResponse, err := s.psClient.GetProductWithResponse(ctx, product.Name)
+	s.Require().NoError(err)
+	s.Equal(http.StatusOK, getProductResponse.StatusCode())
+	s.Require().NotNil(getProductResponse.JSON200)
 
-	s.Equal(http.StatusOK, resp.StatusCode)
-
-	var retrievedProduct types.Product
-	err = json.NewDecoder(resp.Body).Decode(&retrievedProduct)
-	s.Require().NoError(err, "Failed to decode response")
+	retrievedProduct := *getProductResponse.JSON200
 	s.Equal(createdProduct.ID, retrievedProduct.ID)
-	s.Equal(productName, retrievedProduct.Name)
-	s.Equal(categoryName, retrievedProduct.Category)
+	s.Equal(product.Name, retrievedProduct.Name)
+	s.Equal(category.Name, retrievedProduct.Category)
 	s.InEpsilon(999.99, retrievedProduct.Price, epsilon)
 
 	// Test retrieving non-existent product
-	resp, err = s.client.Get(fmt.Sprintf("%s/products/nonexistent", s.server.URL))
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-
-	s.Equal(http.StatusNotFound, resp.StatusCode)
+	nonExistentResponse, err := s.psClient.GetProductWithResponse(ctx, "nonexistent")
+	s.Require().NoError(err)
+	s.Equal(http.StatusNotFound, nonExistentResponse.StatusCode())
 }
 
-// TestProductWithNonExistentCategory tests creating a product with non-existent category
+// TestProductWithNonExistentCategory tests creating a product with a non-existent category
 func (s *TestAPISuite) TestProductWithNonExistentCategory() {
+	ctx := s.T().Context()
+
 	product := types.Product{
-		Name:     "Invalid Product",
-		Category: "NonExistentCategory",
-		Price:    10.99,
+		Name:     s.withID("Invalid Product"),
+		Category: s.withID("NonExistentCategory"),
+		Price:    123.45,
 	}
 
-	jsonData, err := json.Marshal(product)
-	s.Require().NoError(err, "Failed to marshal product")
-
-	req, err := http.NewRequest(http.MethodPut, s.server.URL+"/products", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err, "Failed to create request")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	s.Require().NoError(err, "Failed to send request")
-	defer resp.Body.Close()
-
-	s.Equal(http.StatusNotFound, resp.StatusCode)
+	response, err := s.psClient.PutProductWithResponse(ctx, product)
+	s.Require().NoError(err)
+	s.Equal(http.StatusNotFound, response.StatusCode())
+	s.Require().NotNil(response.JSON404)
+	s.Contains(*response.JSON404, "product category not found")
 }
 
-// TestIdempotentCategoryCreation tests that creating the same category twice preserves the ID
+// TestIdempotentCategoryCreation tests that creating the same category twice works
 func (s *TestAPISuite) TestIdempotentCategoryCreation() {
-	categoryName := "Furniture"
+	ctx := s.T().Context()
+
 	category := types.ProductCategory{
-		Name: categoryName,
+		Name: s.withID("IdempotentCategory"),
 	}
 
-	// First creation
-	jsonData, err := json.Marshal(category)
+	// Create category first time
+	response1, err := s.psClient.PutProductCategoryWithResponse(ctx, category)
 	s.Require().NoError(err)
+	s.Equal(http.StatusOK, response1.StatusCode())
+	s.Require().NotNil(response1.JSON200)
+	s.Equal(category.Name, response1.JSON200.Name)
 
-	req, err := http.NewRequest(http.MethodPut, s.server.URL+"/product-categories", strings.NewReader(string(jsonData)))
+	// Create the same category again
+	response2, err := s.psClient.PutProductCategoryWithResponse(ctx, category)
 	s.Require().NoError(err)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	s.Require().NoError(err)
-	defer resp.Body.Close()
-
-	s.Equal(http.StatusOK, resp.StatusCode)
-
-	var firstCategory types.ProductCategory
-	err = json.NewDecoder(resp.Body).Decode(&firstCategory)
-	s.Require().NoError(err)
-
-	// Second creation
-	req, err = http.NewRequest(http.MethodPut, s.server.URL+"/product-categories", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err = s.client.Do(req)
-	s.Require().NoError(err)
-	defer resp.Body.Close()
-
-	var secondCategory types.ProductCategory
-	err = json.NewDecoder(resp.Body).Decode(&secondCategory)
-	s.Require().NoError(err)
-
-	s.Equal(firstCategory.ID, secondCategory.ID, "ID should be preserved on second creation")
+	s.Equal(http.StatusOK, response2.StatusCode())
+	s.Require().NotNil(response2.JSON200)
+	s.Equal(category.Name, response2.JSON200.Name)
 }
 
-// TestIdempotentProductCreation tests that creating the same product twice preserves the ID
+// TestIdempotentProductCreation tests that creating the same product twice works
 func (s *TestAPISuite) TestIdempotentProductCreation() {
-	// Create category first
-	categoryName := "Books"
+	ctx := s.T().Context()
+
+	// First create a product category
 	category := types.ProductCategory{
-		Name: categoryName,
+		Name: s.withID("IdempotentProductCategory"),
 	}
 
-	jsonData, err := json.Marshal(category)
+	catResponse, err := s.psClient.PutProductCategoryWithResponse(ctx, category)
 	s.Require().NoError(err)
+	s.Equal(http.StatusOK, catResponse.StatusCode())
 
-	req, err := http.NewRequest(http.MethodPut, s.server.URL+"/product-categories", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	s.Require().NoError(err)
-	defer resp.Body.Close()
-
-	// Create product
-	productName := "Programming Book"
+	// Create a product
 	product := types.Product{
-		Name:     productName,
-		Category: categoryName,
-		Price:    29.99,
+		Name:     s.withID("IdempotentProduct"),
+		Category: category.Name,
+		Price:    456.78,
 	}
 
-	jsonData, err = json.Marshal(product)
+	// Create product first time
+	response1, err := s.psClient.PutProductWithResponse(ctx, product)
 	s.Require().NoError(err)
+	s.Equal(http.StatusOK, response1.StatusCode())
+	s.Require().NotNil(response1.JSON200)
+	firstID := response1.JSON200.ID
+	s.NotEmpty(firstID)
 
-	req, err = http.NewRequest(http.MethodPut, s.server.URL+"/products", strings.NewReader(string(jsonData)))
+	// Create the same product again
+	response2, err := s.psClient.PutProductWithResponse(ctx, product)
 	s.Require().NoError(err)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err = s.client.Do(req)
-	s.Require().Equal(http.StatusOK, resp.StatusCode)
-	s.Require().NoError(err)
-	defer resp.Body.Close()
-
-	var firstProduct types.Product
-	err = json.NewDecoder(resp.Body).Decode(&firstProduct)
-	s.Require().NoError(err)
-
-	// Create product again
-	req, err = http.NewRequest(http.MethodPut, s.server.URL+"/products", strings.NewReader(string(jsonData)))
-	s.Require().NoError(err)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err = s.client.Do(req)
-	s.Require().NoError(err)
-	defer resp.Body.Close()
-
-	var secondProduct types.Product
-	err = json.NewDecoder(resp.Body).Decode(&secondProduct)
-	s.Require().NoError(err)
-
-	s.Equal(firstProduct.ID, secondProduct.ID, "ID should be preserved on second creation")
+	s.Equal(http.StatusOK, response2.StatusCode())
+	s.Require().NotNil(response2.JSON200)
+	s.Equal(firstID, response2.JSON200.ID)
+	s.Equal(product.Name, response2.JSON200.Name)
+	s.Equal(category.Name, response2.JSON200.Category)
+	s.InEpsilon(456.78, response2.JSON200.Price, epsilon)
 }
 
 // TestAPI runs the test suite

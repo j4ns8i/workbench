@@ -9,6 +9,8 @@ def apply_redis_chart():
             '--set=architecture=standalone',
             '--set=tls.authClients=false',
             '--set-json=master.disableCommands=[]',
+            '--set=master.readinessProbe.initialDelaySeconds=5',
+            '--set=master.livenessProbe.initialDelaySeconds=5',
             '--version=20.10.1',
         ],
         resource_deps=['bitnami'],

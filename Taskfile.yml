@@ -71,6 +71,7 @@ tasks:
     cmds:
       - go tool oapi-codegen -config openapi/types.config.yaml openapi/types.spec.yaml
       - go tool oapi-codegen -config openapi/api.config.yaml openapi/api.spec.yaml
+      - go tool oapi-codegen -config openapi/api-client.config.yaml openapi/api.spec.yaml
 
   ps-test:
     desc: "Run the product-store tests"
