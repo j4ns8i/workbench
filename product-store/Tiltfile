@@ -44,7 +44,7 @@ def integration_tests():
     local_resource(
         name=prefixed('integration tests'),
         cmd='task ps-test-integration',
-        resource_deps=['workbench-product-store'],
+        resource_deps=['ps: product-store'],
     )
 
 def helm_install():
