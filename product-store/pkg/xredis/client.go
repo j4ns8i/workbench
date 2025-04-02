@@ -2,14 +2,20 @@ package xredis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
 
 	"product-store/pkg/db"
 	"product-store/pkg/types"
+)
+
+const (
+	productEventsChannelName = "productEvents"
 )
 
 type Client struct {
@@ -72,4 +78,30 @@ func (c *Client) PutProduct(ctx context.Context, p types.Product) (types.Product
 func (c *Client) CheckHealth(ctx context.Context) error {
 	err := c.Ping(ctx).Err()
 	return err
+}
+
+func (c *Client) GetProductEvents(ctx context.Context) (<-chan types.Product, error) {
+	// Create a channel for the consumer
+	ch := make(chan types.Product)
+
+	// Launch a goroutine
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		pubsub := c.Subscribe(ctx, productEventsChannelName)
+		msgsCh := pubsub.Channel()
+
+		for msg := range msgsCh {
+			var p types.Product
+			err := json.Unmarshal([]byte(msg.Payload), &p)
+			if err != nil {
+				return err
+			}
+			ch <- p
+		}
+
+		return pubsub.Close()
+	})
+
+	// Return the channel
+	return ch, nil
 }

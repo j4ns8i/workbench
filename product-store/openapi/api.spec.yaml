@@ -130,6 +130,14 @@ paths:
               schema:
                 type: string
                 example: "unexpected error occurred"
+  /events/products:
+    get:
+      summary: Get product events
+      responses:
+        '200':
+          description: A stream of product updates.
+          content:
+            text/event-stream: {}
   /products/{productName}:
     get:
       summary: Get a product by name

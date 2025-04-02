@@ -11,5 +11,6 @@ type DB interface {
 	PutProduct(context.Context, types.Product) (types.Product, error)
 	GetProductCategory(context.Context, string) (types.ProductCategory, error)
 	PutProductCategory(context.Context, types.ProductCategory) (types.ProductCategory, error)
+	GetProductEvents(context.Context) (<-chan types.Product, error)
 	CheckHealth(context.Context) error
 }

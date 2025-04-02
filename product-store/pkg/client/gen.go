@@ -97,6 +97,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetEventsProducts request
+	GetEventsProducts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Healthz request
 	Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -115,6 +118,18 @@ type ClientInterface interface {
 
 	// GetProduct request
 	GetProduct(ctx context.Context, productName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetEventsProducts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEventsProductsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -199,6 +214,33 @@ func (c *Client) GetProduct(ctx context.Context, productName string, reqEditors 
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetEventsProductsRequest generates requests for GetEventsProducts
+func NewGetEventsProductsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/events/products")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewHealthzRequest generates requests for Healthz
@@ -419,6 +461,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetEventsProductsWithResponse request
+	GetEventsProductsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetEventsProductsResponse, error)
+
 	// HealthzWithResponse request
 	HealthzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthzResponse, error)
 
@@ -437,6 +482,27 @@ type ClientWithResponsesInterface interface {
 
 	// GetProductWithResponse request
 	GetProductWithResponse(ctx context.Context, productName string, reqEditors ...RequestEditorFn) (*GetProductResponse, error)
+}
+
+type GetEventsProductsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEventsProductsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEventsProductsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type HealthzResponse struct {
@@ -559,6 +625,15 @@ func (r GetProductResponse) StatusCode() int {
 	return 0
 }
 
+// GetEventsProductsWithResponse request returning *GetEventsProductsResponse
+func (c *ClientWithResponses) GetEventsProductsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetEventsProductsResponse, error) {
+	rsp, err := c.GetEventsProducts(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEventsProductsResponse(rsp)
+}
+
 // HealthzWithResponse request returning *HealthzResponse
 func (c *ClientWithResponses) HealthzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthzResponse, error) {
 	rsp, err := c.Healthz(ctx, reqEditors...)
@@ -618,6 +693,22 @@ func (c *ClientWithResponses) GetProductWithResponse(ctx context.Context, produc
 		return nil, err
 	}
 	return ParseGetProductResponse(rsp)
+}
+
+// ParseGetEventsProductsResponse parses an HTTP response from a GetEventsProductsWithResponse call
+func ParseGetEventsProductsResponse(rsp *http.Response) (*GetEventsProductsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEventsProductsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
 // ParseHealthzResponse parses an HTTP response from a HealthzWithResponse call

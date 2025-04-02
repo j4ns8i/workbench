@@ -1,10 +1,13 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"golang.org/x/sync/errgroup"
 
 	"product-store/pkg/db"
 	"product-store/pkg/types"
@@ -80,4 +83,31 @@ func (h *Handler) GetProduct(e echo.Context, name string) error {
 		return e.JSON(http.StatusInternalServerError, "Unexpected error occurred")
 	}
 	return e.JSON(http.StatusOK, product)
+}
+
+func (h *Handler) GetEventsProducts(e echo.Context) error {
+	ctx := e.Request().Context()
+	ch, err := h.DB.GetProductEvents(ctx)
+	if err != nil {
+		return e.JSON(http.StatusInternalServerError, "Unexpected error occurred")
+	}
+
+	r, w := io.Pipe()
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		for msg := range ch {
+			b, err := json.Marshal(msg)
+			if err != nil {
+				return err
+			}
+
+			_, err = w.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return e.Stream(http.StatusOK, "text/event-stream", r)
 }
